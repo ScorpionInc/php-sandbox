@@ -4,8 +4,99 @@
  * As GDScript is a kinda slow and interpreted language, this will hopefully improve runtime without sacrifing optional functionality.
  * WIP/TODO A lot.
 //*/
-//Debugging Code
+//Validate script environment
+$SCRIPT_VERSION_REQUIREMENTS = array(
+	"Core" => array("min"=>"8"), // Version 8+ allows for mixed type unions / parameter type hinting.
+);
+//No type-hinting in this function is allowed for PHP Core versions older than Major Release 5.
+function validate_script_requirements($requirements)
+{
+	//Returns true if the current PHP environment supports requirements.
+	//Returns false otherwise.
+	//Unlike version_compare() works before version 4.1.0(but after 4.0.0) and supports more options(but slower(?)).
+	//get_loaded_extensions(), foreach, in_array(), explode(), trim(),
+	// phpversion(), count(), isset(), is_numeric(), and intval()
+	// were all available since at least Core Major Release 4. Hopefully good enough.
+	$ext = get_loaded_extensions();
+	foreach($requirements as $key => $value)
+	{
+		//Validate extension presence.
+		if(!in_array($key, $ext))
+			return false;
+		$current_version = explode('.', trim(phpversion($key)));
+		$current_version_count = count($current_version);
+		//Pre-process/Validate current extension's version.
+		for($c = 0; $c < $current_version_count; $c++)
+		{
+			$current_version[$c] = trim($current_version[$c]);
+			if(!is_numeric($current_version[$c]))
+				return false;
+		}
+		//Validate minimum.
+		if(isset($value["min"]))
+		{
+			$minimum_version = explode('.', trim($value["min"]));
+			$minimum_version_count = count($minimum_version);
+			for($m = 0; $m < $minimum_version_count; $m++)
+			{
+				if($m >= $current_version_count)
+					return false;
+				$minimum_version[$m] = trim($minimum_version[$m]);
+				if(!is_numeric($minimum_version[$m]))
+					return false;
+				if(intval($current_version[$m]) < intval($minimum_version[$m]))
+					return false;
+			}
+		}
+		//Validate maximum.
+		if(isset($value["max"]))
+		{
+			$maximum_version = explode('.', trim($value["max"]));
+			$maximum_version_count = count($maximum_version);
+			for($m = 0; $m < $maximum_version_count; $m++)
+			{
+				if($m >= $current_version_count)
+					return false;
+				$maximum_version[$m] = trim($maximum_version[$m]);
+				if(!is_numeric($maximum_version[$m]))
+					return false;
+				if(intval($current_version[$m]) > intval($maximum_version[$m]))
+					return false;
+			}
+		}
+	}
+	return true;
+}
+if(!validate_script_requirements($SCRIPT_VERSION_REQUIREMENTS))
+{
+	// Handle unsupported environment.
+	// For this case we will just die. R.I.P.
+	die("Internal Server Error, contact administrator.");
+}
+
+//Global Variables
+$DEFAULT_OPTIONS = array(
+	"global_defaults"=>array(
+		"comment_char"=>'#',
+		"end_line"=>"\n",
+	),
+	"constant_prefix"=>"DEFAULT_",
+	"constant_suffix"=>"",
+	"export_variable"=>false,
+	"generate_constant"=>false,
+	"print_header_constants"=>true,
+	"print_header_variables"=>true,
+	"print_header_setgets"=>true,
+	"print_header_functions"=>true,
+	"print_header_methods"=>true,
+	"print_header_events"=>true,
+);
+$default_prefix = "DEFAULT_";
 $debug_mode = false;
+$json = "";
+$json_data = array();
+
+//Debugging Functions
 function printd(string $s, string $prefix="[DEBUG]: ", string $suffix="\n") : bool
 {
 	global $debug_mode;
@@ -21,11 +112,6 @@ if($debug_mode)
 	error_reporting(E_ALL);
 }
 printd("Script has started.");
-
-//Global Variables
-$default_prefix = "DEFAULT_";
-$json = "";
-$json_data = array();
 
 //!TODO
 //The meaning of these flags are/should be script/json specific.
@@ -48,8 +134,35 @@ function is_mode( int $test_mode ) : bool
 	return true;
 }
 //Methods
-function print_comment(string $hc)
+function print_header(string $s, array $defaults = null)
 {
+	//Prints header comment block used to mark areas in the generated script.
+	//Returns void(method).
+	global $DEFAULT_OPTIONS;
+	if($defaults == null)
+	{
+		//No defaults provided, using the generic defaults.
+		$defaults = $DEFAULT_OPTIONS["global_defaults"];
+	}
+	elseif(isset($defaults["global_defaults"]))
+	{
+		//Was probably passed all defaults, this function is only using globals.
+		$defaults = $defaults["global_defaults"];
+	}
+	$s = trim($s);
+	$s_len = strlen($s);
+	//Future proofing in-case comment marker changes to more than one character in the future e.g. //
+	$c_len = strlen($defaults["comment_char"]);
+	$m_len = $s_len + (2 * $c_len) + 2;//Comment markers and padding are added to the begining and end
+	$c_cnt = ceil($m_len / $c_len);
+	$c_line = substr(str_repeat($defaults["comment_char"], $c_cnt), 0, $m_len);
+	$m = ($defaults["comment_char"] . " " . $s . " " . $defaults["comment_char"]);
+	print implode($defaults["end_line"], [$c_line, $m, $c_line, ""]);
+}
+function print_comment(string $hc, array $defaults = null)
+{
+	//!TODO
+	//Prints an in-line comment using values from defaults.
 	print("#" . $hc . "\n");
 }
 function print_tooltip_comments(array $a)
@@ -192,7 +305,7 @@ function preprocess_variable_constants(array $variables)
 }
 function print_function(array $f)
 {
-	//Prints a GDScript function from array
+	//Prints a GDScript function from json associative array
 	$temp_flag = false;
 	$temp_count = 0;
 	if($f == null)
