@@ -90,15 +90,18 @@ $DEFAULT_OPTIONS = array(
 	"print_header_functions"=>true,
 	"print_header_methods"=>true,
 	"print_header_events"=>true,
-);
-$default_prefix = "DEFAULT_";
+); // Default values can be replaced via json settings.
+$default_prefix = "DEFAULT_";//Replace me with $defaults["constant_prefix"]
 $debug_mode = false;
 $json = "";
 $json_data = array();
 
-//Debugging Functions
+//Debugging/Logging Function(s)
+//!TODO Add option to debug to file(?)
 function printd(string $s, string $prefix="[DEBUG]: ", string $suffix="\n") : bool
 {
+	//Prints s only if debug_mode is enabled.
+	//Returns global debug_mode value.
 	global $debug_mode;
 	if($debug_mode)
 	{
@@ -111,10 +114,26 @@ if($debug_mode)
 	// Show all errors
 	error_reporting(E_ALL);
 }
-printd("Script has started.");
+
+//JSON Function(s)
+function load_json( string $file_path )
+{
+	//Attempts to read json from file, decode, and then return value.
+	// Read the JSON file.
+	$json = file_get_contents("" . $file_path);
+	if($json == false)
+	{
+		printd("load_json() Failed to read script file into memory.");
+		return null;
+	} else {
+		printd("load_json() Finished reading in the raw JSON file.");
+	}
+	// Decode the JSON file
+	return(json_decode($json, true, 512));
+}
 
 //!TODO
-//The meaning of these flags are/should be script/json specific.
+//The meaning of these flags are/should be script/json specific?
 $script_mode           = 0b0000000000000000;//uint16
 $FLAG_DISABLE_ALL      = 0b1111111111111111;
 $FLAG_DISABLE_DEBUG    = 0b0000000000000001;
@@ -125,7 +144,7 @@ $FLAG_DISABLE_LERP     = 0b0000000000010000;
 $FLAG_DISABLE_LIMITS   = 0b0000000000100000;
 $FLAG_DISABLE_MOUSE    = 0b0000000001000000;
 
-//Functions
+//Function(s)
 function is_mode( int $test_mode ) : bool
 {
 	//!TODO
@@ -133,7 +152,7 @@ function is_mode( int $test_mode ) : bool
 	//Used to enable/include vs disable/exclude parts of the script during generation.
 	return true;
 }
-//Methods
+//Method(s)
 function print_header(string $s, array $defaults = null)
 {
 	//Prints header comment block used to mark areas in the generated script.
@@ -408,33 +427,23 @@ function print_script( $json_data, $script_mode = 0 )
 		print("\n");
 	}
 }
-function load_json( string $file_path )
-{
-	//Attempts to read json from file, decode, and then return value.
-	// Read the JSON file.
-	$json = file_get_contents('./Script.json');
-	if($json == false)
-	{
-		printd("load_json() Failed to read script file.");
-		return null;
-	} else {
-		printd("load_json() Finished reading in the raw JSON file.");
-	}
-	// Decode the JSON file
-	return(json_decode($json, true, 512));
-}
 
 // Start main execution.
+printd("Script's main execution has started.");//!Debugging
 $json_data = load_json('./Script.json');
 if($json_data == null)
 {
-	printd("Failed to parse JSON data.");
+	printd("Failed to parse JSON data.");//!Debugging
 	die();
 }
 // Display data(Debugging)
-if($debug_mode){ printd("Parsed JSON recursive value: "); print_r($json_data); }
+if($debug_mode)
+{
+	printd("Parsed JSON recursive value: ");
+	print_r($json_data);
+}
 // Print
 print_script($json_data);
 //Finish
-printd("Script has stopped.");
+printd("Script has stopped.");//!Debugging
 ?>
