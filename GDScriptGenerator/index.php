@@ -129,7 +129,9 @@ function load_json( string $file_path )
 	{
 		printd("load_json() Failed to read script file into memory.");
 		return null;
-	} else {
+	}
+	else
+	{
 		printd("load_json() Finished reading in the raw JSON file.");
 	}
 	// Decode the JSON file
@@ -139,16 +141,18 @@ function load_json( string $file_path )
 //Script Specific Stuff
 //Global Variables
 $DEFAULT_OPTIONS = array(
-	"global_defaults"=>array(
+	"global_defaults"       => array(
 		"prefer_multiline"  => true,
 		"comment_char"      => '#',
 		"comments_char"     => "\"\"\"",
 		"end_line"          => "\n",
 	),
-	"constant_prefix"       => "DEFAULT_",
-	"constant_suffix"       => "",
+	"constant_defaults"     => array(
+		"constant_prefix"   => "DEFAULT_",
+		"constant_suffix"   => "",
+		"generate_constant" => false,
+	),
 	"export_variable"       => false,
-	"generate_constant"     => false,
 	"print_header_constants"=> true,
 	"print_header_variables"=> true,
 	"print_header_setgets"  => true, // Unused in Godot Version 4+
@@ -163,7 +167,7 @@ $DEFAULT_OPTIONS = array(
 	"header_events"         => "Script Event(s)",
 ); // Default values can be replaced via json settings.
 
-$default_prefix = "DEFAULT_";//Replace me with $defaults["constant_prefix"]
+$default_prefix = "DEFAULT_";//Replace me with $defaults["constant_defaults"]["constant_prefix"]
 $json = "";
 $json_data = array();
 
@@ -234,7 +238,9 @@ function print_comment(string $p_comment, array $defaults = null, int $padding_a
 		//Print single-line comment(s)
 		foreach($lines as $line)
 			print("" . $defaults["comment_char"] . str_repeat(" ", $padding_amount) . $line . $defaults["end_line"]);
-	} else {
+	}
+	else
+	{
 		//Print a multiline comment
 		print($defaults["comments_char"] . $defaults["end_line"]);
 		print($p_comment);
@@ -259,7 +265,9 @@ function print_comments(string|array $p_comments, array $defaults = null, int $p
 	{
 		//Handle array(s) recursively
 		print_comments(implode_r("" . $defaults["end_line"], $p_comments), $defaults, $padding_amount);
-	} else {
+	}
+	else
+	{
 		//Handle string(s)
 		print_comment($p_comments, $defaults, $padding_amount);
 	}
@@ -379,28 +387,60 @@ function print_variable(array $v)
 		print("\n");
 	}
 }
-function preprocess_variable_constants(array $variables)
+function preprocess_variable_constants(array $json_data, array $defaults = null)
 {
-	global $default_prefix, $json_data;
-	//Adds any auto-defined default constant values from variables array to constants array.
+	global $DEFAULT_OPTIONS;
+	//Pushes any generated constant values from json_data["variables"] array to json_data["constants"] array,
+	// unless constant value already exists in said array.
 	//Assumes json_data is loaded and valid.
-	foreach($variables as $i => $next)
+	//Returns updated $json_data(array).
+	$defaults_key = "constant_defaults";
+	if($defaults == null)
 	{
-		if(!isset($next["name"]))
+		//No defaults provided, using the generic defaults.
+		$defaults = $DEFAULT_OPTIONS[$defaults_key];
+	}
+	elseif(array_key_exists($defaults_key, $defaults))
+	{
+		//Was probably passed all defaults, this function is only using $DEFAULT_OPTIONS[$defaults_key] defaults.
+		$defaults = $defaults[$defaults_key];
+	}
+	//Validate json_data arrays.
+	$variables_key = "variables";
+	if(!array_key_exists($variables_key, $json_data))
+	{
+		printd("preprocess_variable_constants() failed to locate any variables in json_data. This maybe intended.");//!Debugging
+		$json_data[$variables_key] = array();
+		return($json_data);
+	}
+	$constants_key = "constants";
+	if(!array_key_exists($constants_key, $json_data))
+	{
+		printd("preprocess_variable_constants() failed to locate any constants in json_data. This maybe intended.");//!Debugging
+		$json_data[$constants_key] = array();
+	}
+	//Both arrays exist in json_data at this point.
+	$name_key = "name";
+	$type_key = "type";
+	$value_key = "value";
+	$generate_key = "generate_default";
+	foreach($json_data[$variables_key] as $key => $value)
+	{
+		if(!array_key_exists($name_key, $value))
+			continue;// Variable entry is probably being used for manual formatting.
+		if(array_key_exists($generate_key, $value))
 		{
-			array_push($json_data["constants"], array());//For manual formatting.
-			continue;
-		}
-		if(isset($next["generate_default"]))
-		{
-			if(!$next["generate_default"]) continue;
-			array_push($json_data["constants"], array(
-			"name" => $default_prefix . $next["name"],
-			"type" => $next["type"],
-			"value" => $next["value"]
+			if(!$value[$generate_key])
+				continue;
+			array_push($json_data[$constants_key],
+			array(
+				$name_key => $defaults["constant_prefix"] . $value[$name_key] . $defaults["constant_suffix"],
+				$type_key => $value[$type_key],
+				$value_key => $value[$value_key]
 			));
 		}
 	}
+	return($json_data);
 }
 function print_function(array $f)
 {
@@ -456,11 +496,11 @@ function print_function(array $f)
 	}
 	$temp_flag = false;
 }
-function print_script( $json_data, $script_mode = 0 )
+function print_script( array $json_data, int $script_mode = 0 )
 {
 	//Processes and prints a GDScript from json_data
 	//Pre-Processing
-	preprocess_variable_constants($json_data["variables"]);
+	$json_data = preprocess_variable_constants($json_data, null);
 	//Print Header Comments
 	if(isset($json_data["header_comments"]))
 	{
