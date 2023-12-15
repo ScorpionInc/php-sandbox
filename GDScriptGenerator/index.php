@@ -75,7 +75,7 @@ if(!validate_script_requirements($SCRIPT_VERSION_REQUIREMENTS))
 }
 
 //Debugging/Logging Function(s)
-//!TODO Add option to debug to file(?)
+//!TODO Add option to debug/log to other file(?)
 $debug_mode = false;
 function printd(string $s, string $prefix="[DEBUG]: ", string $suffix="\n") : bool
 {
@@ -83,9 +83,7 @@ function printd(string $s, string $prefix="[DEBUG]: ", string $suffix="\n") : bo
 	//Returns global debug_mode value.
 	global $debug_mode;
 	if($debug_mode)
-	{
-		print($prefix . $s . $suffix);
-	}
+		print("" . $prefix . $s . $suffix);
 	return $debug_mode;
 }
 if($debug_mode)
@@ -94,7 +92,7 @@ if($debug_mode)
 	error_reporting(E_ALL);
 }
 
-//String Function(s)
+//String/Array Function(s)
 function implode_r(string $glue, $a, bool $reverse = false)
 {
 	//Returns string values of elements of a recursively joined by glue.
@@ -118,6 +116,23 @@ function implode_r(string $glue, $a, bool $reverse = false)
 	}
 	return strval($a);
 }
+//Splat operator "..." requires PHP Core version of 5.6 or higher.
+function array_merge_shallow(array $base_array, array ...$next_arrays):array
+{
+	//Functions like array_merge, however child elements that are also arrays are not merged.
+	//Array elements in base_array are maintained. Overlapping keys are replaced see array_merge.
+	//Returns merged results(array).
+	foreach($next_arrays as $next_array)
+	{
+		foreach($next_array as $key => $value)
+		{
+			if(is_array($value))
+				continue;
+			$base_array[$key] = $value;
+		}
+	}
+	return $base_array;
+}
 
 //JSON Function(s)
 function load_json( string $file_path )
@@ -139,13 +154,12 @@ function load_json( string $file_path )
 }
 
 //Script Specific Stuff
-//Global Variables
+//Handling Default(s) Function(s)
 $DEFAULT_OPTIONS = array(
-	"global_defaults"       => array( //!TODO Change to comment_defaults(?)
+	"comment_defaults"       => array(
 		"prefer_multiline"  => true,
 		"comment_char"      => '#',
 		"comments_char"     => "\"\"\"",
-		"end_line"          => "\n",
 		"padding_char"      => " ", // Unimplemented(yet).
 		"header_padding"    => 1, // Unimplemented(yet).
 		"comment_padding"   => 1, // Unimplemented(yet).
@@ -155,6 +169,7 @@ $DEFAULT_OPTIONS = array(
 		"constant_suffix"   => "",
 		"generate_constant" => false,
 	),
+	"end_line"              => "\n",
 	"export_variable"       => false,
 	"print_header_constants"=> true,
 	"print_header_variables"=> true,
@@ -168,8 +183,27 @@ $DEFAULT_OPTIONS = array(
 	"header_functions"      => "Script Function(s)",
 	"header_methods"        => "Script Method(s)",
 	"header_events"         => "Script Event(s)",
-); // Default values can be replaced via json settings.
+); // Default values can be replaced/overriden via json settings.
+function get_defaults(string $group_name = ""): array
+{
+	//Returns default parameters for entire script for specific to one group of default values.
+	global $DEFAULT_OPTIONS;
+	if($group_name == "")
+		return $DEFAULT_OPTIONS;
+	if(!array_key_exists($group_name, $DEFAULT_OPTIONS))
+	{
+		//Try adding suffix?
+		$group_name .= "_defaults";
+		if(!array_key_exists($group_name, $DEFAULT_OPTIONS))
+		{
+			printd("get_defaults() encountered request for unknown group named: '" . $group_name . "'.");//!Debugging
+			return $DEFAULT_OPTIONS;
+		}
+	}
+	return array_merge_shallow($DEFAULT_OPTIONS[$group_name], $DEFAULT_OPTIONS);
+}
 
+//Global Variables
 $default_prefix = "DEFAULT_"; //!TODO Replace me with $defaults["constant_defaults"]["constant_prefix"]
 $json = "";
 $json_data = array();
@@ -199,16 +233,10 @@ function print_header(string $s, array $defaults = null)
 {
 	//Prints header comment block used to mark areas in the generated script.
 	//Returns void(method).
-	global $DEFAULT_OPTIONS;
 	if($defaults == null)
 	{
 		//No defaults provided, using the generic defaults.
-		$defaults = $DEFAULT_OPTIONS["global_defaults"];
-	}
-	elseif(isset($defaults["global_defaults"]))
-	{
-		//Was probably passed all defaults, this function is only using globals.
-		$defaults = $defaults["global_defaults"];
+		$defaults = get_defaults("comment");
 	}
 	$s = trim($s);
 	$s_len = strlen($s);
@@ -223,16 +251,10 @@ function print_header(string $s, array $defaults = null)
 function print_comment(string $p_comment, array $defaults = null, int $padding_amount = 1)
 {
 	//Prints an in-line comment using values from defaults with optional padding.
-	global $DEFAULT_OPTIONS;
 	if($defaults == null)
 	{
 		//No defaults provided, using the generic defaults.
-		$defaults = $DEFAULT_OPTIONS["global_defaults"];
-	}
-	elseif(isset($defaults["global_defaults"]))
-	{
-		//Was probably passed all defaults, this function is only using globals.
-		$defaults = $defaults["global_defaults"];
+		$defaults = get_defaults("comment");
 	}
 	$lines = explode("" . $defaults["end_line"], $p_comment);
 	$lines_count = count($lines);
@@ -253,16 +275,10 @@ function print_comment(string $p_comment, array $defaults = null, int $padding_a
 function print_comments(string|array $p_comments, array $defaults = null, int $padding_amount = 1)
 {
 	//Prints multiple comments using values from defaults with optional padding.
-	global $DEFAULT_OPTIONS;
 	if($defaults == null)
 	{
 		//No defaults provided, using the generic defaults.
-		$defaults = $DEFAULT_OPTIONS["global_defaults"];
-	}
-	elseif(isset($defaults["global_defaults"]))
-	{
-		//Was probably passed all defaults, this function is only using globals.
-		$defaults = $defaults["global_defaults"];
+		$defaults = get_defaults("comment");
 	}
 	if(is_array($p_comments))
 	{
@@ -392,21 +408,14 @@ function print_variable(array $v)
 }
 function preprocess_variable_constants(array $json_data, array $defaults = null)
 {
-	global $DEFAULT_OPTIONS;
 	//Pushes any generated constant values from json_data["variables"] array to json_data["constants"] array,
 	// unless constant value already exists in said array.
 	//Assumes json_data is loaded and valid.
 	//Returns updated $json_data(array).
-	$defaults_key = "constant_defaults";
 	if($defaults == null)
 	{
 		//No defaults provided, using the generic defaults.
-		$defaults = $DEFAULT_OPTIONS[$defaults_key];
-	}
-	elseif(array_key_exists($defaults_key, $defaults))
-	{
-		//Was probably passed all defaults, this function is only using $DEFAULT_OPTIONS[$defaults_key] defaults.
-		$defaults = $defaults[$defaults_key];
+		$defaults = get_defaults("constant");
 	}
 	//Validate json_data arrays.
 	$variables_key = "variables";
