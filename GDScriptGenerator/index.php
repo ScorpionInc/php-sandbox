@@ -229,23 +229,24 @@ function is_mode( int $test_mode ) : bool
 	return true;
 }
 //Method(s)
-function print_header(string $s, array $defaults = null)
+function print_header(string $s, array $defaults = null, int $padding_amount = -1)
 {
 	//Prints header comment block used to mark areas in the generated script.
 	//Returns void(method).
 	if($defaults == null)
-	{
 		//No defaults provided, using the generic defaults.
 		$defaults = get_defaults("comment");
-	}
+	if($padding_amount < 0)
+		$padding_amount = $defaults["header_padding"];
 	$s = trim($s);
 	$s_len = strlen($s);
 	//Future proofing in-case comment marker changes to more than one character in the future e.g. //
+	$p_len = strlen($defaults["padding_char"]);
 	$c_len = strlen($defaults["comment_char"]);
-	$m_len = $s_len + (2 * $c_len) + 2;//Comment markers and padding are added to the begining and end
+	$m_len = $s_len + (2 * $c_len) + (2 * $p_len);//Comment markers and padding are added to the begining and end
 	$c_cnt = ceil($m_len / $c_len);
 	$c_line = substr(str_repeat($defaults["comment_char"], $c_cnt), 0, $m_len);
-	$m = ($defaults["comment_char"] . $defaults["padding_char"] . $s . $defaults["padding_char"] . $defaults["comment_char"]);
+	$m = ($defaults["comment_char"] . str_repeat($defaults["padding_char"], $padding_amount) . $s . str_repeat($defaults["padding_char"], $padding_amount) . $defaults["comment_char"]);
 	print implode($defaults["end_line"], [$c_line, $m, $c_line, ""]);
 }
 function print_comment(string $p_comment, array $defaults = null, int $padding_amount = 1)
