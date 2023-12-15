@@ -510,6 +510,124 @@ function preprocess_tooltips(array $json_data, array $defaults = null)
 	}
 	return $json_data;
 }
+
+//Code migration functions. (WIP)
+//Lots of little changes between versions. Might make this a separate file for reuse or something.
+//Meant to be a crude conversion to get you close to the target.
+//It maybe better to disable migration(by setting code_version to godot_version) and use the Godot's built-in migration.
+//https://github.com/dploeger/godot-migrationnotes
+$GODOT2_TO_GODOT3_RENAMES = array(
+	["engine.cfg", "project.godot"], // Seems unlikely that script will reference this but just in-case.
+	["mouse_enter", "mouse_entered"], // Signals start
+	["mouse_exit", "mouse_exited"],
+	["input_event", "gui_input"],
+	["_on_ScaleTween_tween_complete", "_on_ScaleTween_tween_completed"],
+	["item_pressed", "id_pressed"],
+	["tree_exited", "tree_exiting"],
+	["finished", "animation_finished"],
+	["body_enter_shape", "body_shape_entered"], // Signals stop
+	["_fixed_process", "_physics_process"],
+	["get_pos()", "position"],
+	[".pos", ".position"],
+	[".rot", ".rotation"],
+	["Globals.get(", "ProjectSettings.get("],
+	["viewport.get_rect()", "get_visible_rect()"],
+	[" extends ", " is "],
+	["true +", "int(true) +"],
+	["true -", "int(true) -"],
+	["false +", "int(false) +"],
+	["false -", "int(false) -"],
+	["true *", "int(true) *"],
+	["true /", "int(true) /"],
+	["false *", "int(false) *"],
+	["false /", "int(false) /"],
+	["move(", "move_and_slide("],
+	["RawArray", "PoolByteArray"],
+	["Vector2Array", "PoolVector2Array"],
+	["Vector3Array", "PoolVector3Array"],
+	["ColorArray", "PoolColorArray"],
+	[".z", ".z_index"],
+	["InputEventMouseMotion::pos", "InputEventMouseMotion::postion"],
+	["Matrix3", "Basis"],
+	["Matrix32", "Transform2D"],
+	["Patch9Frame", "NinePatchRect"],
+	[".opacity", ".modulate.a"],
+	["Dictionary.to_json(", "to_json("],
+	["Dictionary.from_json(", "from_json("],
+	["KEY_ENTER", "KEY_KP_ENTER"],
+	["KEY_RETURN", "KEY_ENTER"], // Processing order matters here.
+	["ColorRamp", "Gradient"],
+	["look_at_from_pos(", "look_at_from_position("],
+);
+function godot2_to_godot3(string code_line)
+{
+	//!TODO
+}
+function godot3_to_godot2(string code_line)
+{
+	//!TODO
+}
+//https://gist.github.com/WolfgangSenff/168cb0cbd486c8c9cd507f232165b976
+$GODOT3_TO_GODOT4_RENAMES = array(
+	["raise()", "move_to_front()"],
+	["change_scene", "change_scene_to_file"],
+	["change_scene_to", "change_scene_to_packed"],
+	["ssl", "tls"],
+	["or_lesser", "or_less"],
+	["interpolate", "sample"],
+	["caret_blink_speed", "caret_blink_interval"],
+	["update(", "queue_redraw("],
+	["world_to_map", "local_to_map"],
+	["map_to_world", "map_to_local"],
+	["uniform", "parameter"],
+	["percent_visible", "show_percentage"],
+	["CONNECT_ONESHOT", "CONNECT_ONE_SHOT"],
+	["range_lerp(", "remap("],
+	["get_current_index", "get_focused_item"],
+	["StreamPeerSSL", "StreamPeerTLS"],
+	["get_editor_main_control", "get_editor_main_screen"],
+	["str2var(", "str_to_var("],
+	["deg2rad(", "deg_to_rad("],
+	["rad2deg(", "rad_to_deg("],
+	["ParticlesMaterial", "ParticlesProcessMaterial"],
+	["Position2D", "Marker2D"],
+	["Position3D", "Marker3D"],
+	["percent_visible", "visible_ratio"],
+	["hint_tooltip", "tooltip_text"],
+	["PoolByteArray", "PackedByteArray"],
+	["PoolColorArray", "PackedColorArray"],
+	["PoolFloat32Array", "PackedFloat32Array"],
+	["PoolFloat64Array", "PackedFloat64Array"],
+	["PoolInt32Array", "PackedInt32Array"],
+	["PoolInt64Array", "PackedInt64Array"],
+	["PoolStringArray", "PackedStringArray"],
+	["PoolVector2Array", "PackedVector2Array"],
+	["PoolVector3Array", "PackedVector3Array"],
+	[".instance()", ".instantiate()"],
+	["Spatial", "Node3D"],
+	["GIProbe", "VoxelGI"],
+	["BakedLightmap", "LightmapGI"],
+	["Light2D", "PointLight2D"],
+	["VisibilityNotifier2D", "VisibleOnScreenNotifier2D"],
+	["VisibilityNotifier3D", "VisibleOnScreenNotifier3D"],
+	["VisibilityEnabler2D", "VisibleOnScreenEnabler2D"],
+	["VisibilityEnabler3D", "VisibleOnScreenEnabler3D"],
+	["Physics2DDirectSpaceState", "PhysicsDirectSpaceState2D"],
+	["File", "FileAccess"],
+	["CollisionObject ", "CollisionObject3D "],
+	["CollisionObject.", "CollisionObject3D."],
+	["get_data(", "get_image("],
+	["get_rect(", "get_region("],
+);
+function godot3_to_godot4(string code_line)
+{
+	//!TODO
+}
+function godot4_to_godot3(string code_line)
+{
+	//!TODO
+}
+
 function is_entry_a_function(array $f)
 {
 	//Helper function
