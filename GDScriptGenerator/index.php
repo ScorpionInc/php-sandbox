@@ -150,32 +150,39 @@ function load_json( string $file_path )
 //Handling Default(s) Function(s)
 $DEFAULT_OPTIONS = array(
 	"comment_defaults"       => array(
-		"prefer_multiline"  => true,
-		"comment_char"      => '#',
-		"comments_char"     => "\"\"\"",
-		"padding_char"      => " ",
-		"header_padding"    => 1,
-		"comment_padding"   => 1,
+		"prefer_multiline"   => true,
+		"comment_char"       => '#',
+		"comments_char"      => "\"\"\"",
+		"padding_char"       => " ",
+		"header_padding"     => 1,
+		"comment_padding"    => 1,
 	),
-	"constant_defaults"     => array(
-		"constant_prefix"   => "DEFAULT_",
-		"constant_suffix"   => "",
-		"generate_constant" => false,
+	"constant_defaults"      => array(
+		"constant_prefix"    => "DEFAULT_",
+		"constant_suffix"    => "",
+		"generate_constant"  => false,
 	),
-	"end_line"              => "\n",
-	"export_variable"       => false,
-	"print_header_constants"=> true,
-	"print_header_variables"=> true,
-	"print_header_setgets"  => true, // Unused in Godot Version 4+
-	"print_header_functions"=> true,
-	"print_header_methods"  => true,
-	"print_header_events"   => true,
-	"header_constants"      => "Script Constant(s) / Default(s)",
-	"header_variables"      => "Script Variable(s) / Exported Variable(s)",
-	"header_setgets"        => "Script setget/set/get Function(s)", // Unused in Godot Version 4+
-	"header_functions"      => "Script Function(s)",
-	"header_methods"        => "Script Method(s)",
-	"header_events"         => "Script Event(s)",
+	"function_defaults"      => array(
+		"function_type"      => "void",
+		"function_parameters"=>array(),
+		"function_code"      => array(
+			"pass",
+		),
+	),
+	"end_line"               => "\n",
+	"export_variable"        => false,
+	"print_header_constants" => true,
+	"print_header_variables" => true,
+	"print_header_setgets"   => true, // Unused in Godot Version 4+
+	"print_header_functions" => true,
+	"print_header_methods"   => true,
+	"print_header_events"    => true,
+	"header_constants"       => "Script Constant(s) / Default(s)",
+	"header_variables"       => "Script Variable(s) / Exported Variable(s)",
+	"header_setgets"         => "Script setget/set/get Function(s)", // Unused in Godot Version 4+
+	"header_functions"       => "Script Function(s)",
+	"header_methods"         => "Script Method(s)",
+	"header_events"          => "Script Event(s)",
 ); // Default values can be replaced/overriden via json settings.
 function get_defaults(string $group_name = ""): array
 {
@@ -472,32 +479,68 @@ function preprocess_tooltips(array $json_data, array $defaults = null)
 	}
 	return $json_data;
 }
-function print_function(array $f)
+function is_entry_a_function(array $f)
+{
+	//Helper function
+	return(!is_entry_a_method($f));
+}
+function is_entry_a_method(array $m)
+{
+	//!TODO utilize...
+	//Returns true if the type and/or code indicate it's probably a method.
+	//Returns false if explicitly found to be a function.
+	$type_key = "type";
+	if(array_key_exists($type_key, $m))
+		if($m[$type_key] == "void")
+			return true;
+		else
+			return false;
+	$code_key = "code";
+	$pattern = "/\s*return[ 	]*[a-zA-Z0-9]+$/";
+	if(array_key_exists($code_key, $m))
+	{
+		foreach(explode('\n', $m[$code_key]) as $line)
+			if(preg_match_all($pattern, $line) > 0)
+				return false;
+	}
+	return true;
+}
+function preprocess_functions(array $json_data, array $defaults = null)
+{
+	//!TODO Implement and utilize...
+	//Separates methods from functions to get grouped during printing.
+}
+function print_function(array $f, array $defaults = null)
 {
 	//Prints a GDScript function from JSON associative array
-	$temp_flag = false;
-	$temp_count = 0;
+	//$f is each element of $json_data[$functions_key]
+	if($defaults == null)
+		$defaults = get_defaults("function");
 	if($f == null)
 	{
 		//Used for manual formatting.
-		print("\n");
+		print("" . $defaults["end_line"]);
 		return;
 	}
-	if($f["name"] == null or strlen($f["name"]) <= 0)//Warning: strlen(null) is deprecated.
+	$name_key = "name";
+	if($f[$name_key] == null or strlen($f[$name_key]) <= 0)//Warning: strlen(null) is deprecated.
 	{
 		printd("Failed to print function. Function name was undefined or empty.", "[WARN]: ");
 		return;
 	}
-	print("func " . strtolower($f["name"]) . "(");
-	if(isset($f["parameters"]))
+	print("func " . strtolower($f[$name_key]) . "(");
+	$temp_flag = false;
+	$temp_count = 0;
+	$parameters_key = "parameters";
+	if(isset($f[$parameters_key]))
 	{
-		$temp_count = count($f["parameters"]);
+		$temp_count = count($f[$parameters_key]);
 		if($temp_count > 0)
 			$temp_flag = true;
 	}
 	if($temp_flag)
 	{
-		foreach($f["parameters"] as $i => $next)
+		foreach($f[$parameters_key] as $i => $next)
 		{
 			print($next);
 			if(($i + 1) < $temp_count)
@@ -562,9 +605,7 @@ function print_script( array $json_data, int $script_mode = 0 )
 	{
 		print_header("Functions / Methods / Events / Signals / SetGets");
 		foreach($json_data[$functions_key] as $i => $next)
-		{
 			print_function($next);
-		}
 		print("\n");
 	}
 }
@@ -574,7 +615,7 @@ printd("Script's main execution has started.");//!Debugging
 $json_data = load_json($target_file_path);
 if($json_data == null)
 {
-	printd("Failed to parse JSON data.");//!Debugging
+	printd("Failed to parse JSON data.", "[ERROR]: ");//!Debugging
 	die();
 }
 // Display data(Debugging)
