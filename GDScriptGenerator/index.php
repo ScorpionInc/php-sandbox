@@ -189,7 +189,8 @@ function get_defaults(string $group_name = ""): array
 	//Returns default parameters for entire script for specific to one group of default values.
 	global $DEFAULT_OPTIONS;
 	if($group_name == "")
-		return $DEFAULT_OPTIONS;
+		//Return only global default values.
+		return array_merge_shallow(array(), $DEFAULT_OPTIONS);
 	if(!array_key_exists($group_name, $DEFAULT_OPTIONS))
 	{
 		//Try adding suffix?
@@ -197,7 +198,8 @@ function get_defaults(string $group_name = ""): array
 		if(!array_key_exists($group_name, $DEFAULT_OPTIONS))
 		{
 			printd("get_defaults() encountered request for unknown group named: '" . $group_name . "'.");//!Debugging
-			return $DEFAULT_OPTIONS;
+			//Return global default values.
+			return get_defaults();
 		}
 	}
 	return array_merge_shallow($DEFAULT_OPTIONS[$group_name], $DEFAULT_OPTIONS);
@@ -249,14 +251,14 @@ function print_header(string $s, array $defaults = null, int $padding_amount = -
 	$m = ($defaults["comment_char"] . str_repeat($defaults["padding_char"], $padding_amount) . $s . str_repeat($defaults["padding_char"], $padding_amount) . $defaults["comment_char"]);
 	print implode($defaults["end_line"], [$c_line, $m, $c_line, ""]);
 }
-function print_comment(string $p_comment, array $defaults = null, int $padding_amount = 1)
+function print_comment(string $p_comment, array $defaults = null, int $padding_amount = -1)
 {
 	//Prints an in-line comment using values from defaults with optional padding.
 	if($defaults == null)
-	{
 		//No defaults provided, using the generic defaults.
 		$defaults = get_defaults("comment");
-	}
+	if($padding_amount < 0)
+		$padding_amount = $defaults["comment_padding"];
 	$lines = explode("" . $defaults["end_line"], $p_comment);
 	$lines_count = count($lines);
 	if((!$defaults["prefer_multiline"]) || ($lines_count <= 1))
@@ -273,24 +275,18 @@ function print_comment(string $p_comment, array $defaults = null, int $padding_a
 		print($defaults["comments_char"] . $defaults["end_line"]);
 	}
 }
-function print_comments(string|array $p_comments, array $defaults = null, int $padding_amount = 1)
+function print_comments(string|array $p_comments, array $defaults = null, int $padding_amount = -1)
 {
 	//Prints multiple comments using values from defaults with optional padding.
 	if($defaults == null)
-	{
 		//No defaults provided, using the generic defaults.
-		$defaults = get_defaults("comment");
-	}
+		$defaults = get_defaults();
 	if(is_array($p_comments))
-	{
 		//Handle array(s) recursively
 		print_comments(implode_r("" . $defaults["end_line"], $p_comments), $defaults, $padding_amount);
-	}
 	else
-	{
 		//Handle string(s)
 		print_comment($p_comments, $defaults, $padding_amount);
-	}
 }
 function print_tooltip_comments(array $a)
 {
