@@ -575,7 +575,7 @@ function godot3_to_godot2(string $code_line)
 	global $GODOT2_TO_GODOT3_RENAMES;
 	//Do renames.
 	foreach(array_reverse($GODOT2_TO_GODOT3_RENAMES) as $next_rename)
-		$code_line = str_replace($next_rename[0], $next_rename[1], $code_line);
+		$code_line = str_replace($next_rename[1], $next_rename[0], $code_line);
 	return $code_line;
 }
 //https://gist.github.com/WolfgangSenff/168cb0cbd486c8c9cd507f232165b976
@@ -645,7 +645,7 @@ function godot4_to_godot3(string $code_line)
 	global $GODOT3_TO_GODOT4_RENAMES;
 	//Do renames.
 	foreach(array_reverse($GODOT3_TO_GODOT4_RENAMES) as $next_rename)
-		$code_line = str_replace($next_rename[0], $next_rename[1], $code_line);
+		$code_line = str_replace($next_rename[1], $next_rename[0], $code_line);
 	return $code_line;
 }
 
