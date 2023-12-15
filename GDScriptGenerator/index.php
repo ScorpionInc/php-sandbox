@@ -735,36 +735,26 @@ function print_function(array $f, array $defaults = null)
 		printd("Failed to print function. Function name was undefined or empty.", "[WARN]: ");
 		return;
 	}
-	print("func " . strtolower($f[$name_key]) . "(");
-	$temp_flag = false;
+	print("func " . $f[$name_key] . "(");
 	$temp_count = 0;
 	$parameters_key = "parameters";
-	if(isset($f[$parameters_key]))
-	{
+	if(array_key_exists($parameters_key, $f))
 		$temp_count = count($f[$parameters_key]);
-		if($temp_count > 0)
-			$temp_flag = true;
-	}
-	if($temp_flag)
-	{
+	if($temp_count > 0)
 		foreach($f[$parameters_key] as $i => $next)
 		{
 			print_r($next);
 			if(($i + 1) < $temp_count)
 				print(", ");
 		}
-	}
-	$temp_flag = false;
-	$temp_count = 0;
 	print(")");
-	if(isset($f["type"]))
-	{
+	$type_key = "type";
+	if(array_key_exists($type_key, $f))
 		print(" -> " . $f["type"]);
-	}
 	print(":\n");
-	if(isset($f["code"]))
-		print("\t" . $f["code"] . "\n");
-	$temp_flag = false;
+	$code_key = "code";
+	if(array_key_exists($code_key, $f))
+		print("\t" . $f[$code_key] . "\n");
 }
 function print_script( array $json_data, int $script_mode = 0 )
 {
