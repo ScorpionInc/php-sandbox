@@ -687,6 +687,7 @@ function preprocess_functions(array $json_data, array $defaults = null)
 	if(!array_key_exists($methods_key, $json_data))
 		$json_data[$methods_key] = array();
 	$code_key = "code";
+	$type_key = "type";
 	foreach($json_data[$functions_key] as $key => &$function)
 	{
 		//Implode code data.
@@ -697,6 +698,7 @@ function preprocess_functions(array $json_data, array $defaults = null)
 		//Sort into methods as needed.
 		if(is_entry_a_method($function))
 		{
+			$function[$type_key] = "void";
 			array_push($json_data[$methods_key], $function);
 			unset($json_data[$functions_key][$key]);
 		}
@@ -766,8 +768,10 @@ function print_script( array $json_data, int $script_mode = 0 )
 	if(array_key_exists($header_comments_key, $json_data))
 	{
 		if(count($json_data[$header_comments_key]) > 0)
+		{
 			print_comments($json_data[$header_comments_key]);
-		print("\n");
+			print("\n");
+		}
 	}
 	//Print Constants
 	$constants_key = "constants";
@@ -776,6 +780,7 @@ function print_script( array $json_data, int $script_mode = 0 )
 		if(count($json_data[$constants_key]) > 0)
 		{
 			print_header("Constants / Defaults");
+			print("\n");
 			foreach($json_data[$constants_key] as $next)
 				print_variable($next, null, true);
 			print("\n");
@@ -788,6 +793,7 @@ function print_script( array $json_data, int $script_mode = 0 )
 		if(count($json_data[$variables_key]) > 0)
 		{
 			print_header("Variables / Exported Variables");
+			print("\n");
 			foreach($json_data[$variables_key] as $i => $next)
 				print_variable($next, null, false);
 			print("\n");
@@ -800,6 +806,7 @@ function print_script( array $json_data, int $script_mode = 0 )
 		if(count($json_data[$functions_key]) > 0)
 		{
 			print_header("Functions / Events / Signals / SetGets");
+			print("\n");
 			foreach($json_data[$functions_key] as $i => $next)
 				print_function($next);
 			print("\n");
@@ -811,6 +818,7 @@ function print_script( array $json_data, int $script_mode = 0 )
 		if(count($json_data[$methods_key]) > 0)
 		{
 			print_header("Methods");
+			print("\n");
 			foreach($json_data[$methods_key] as $i => $next)
 				print_function($next);
 			print("\n");
