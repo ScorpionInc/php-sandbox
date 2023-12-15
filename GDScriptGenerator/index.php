@@ -142,7 +142,7 @@ function load_json( string $file_path )
 	$json = file_get_contents("" . $file_path);
 	if($json == false)
 	{
-		printd("load_json() Failed to read script file into memory.");
+		printd("load_json() Failed to read script file into memory.", "[ERROR]: ");
 		return null;
 	}
 	else
@@ -161,8 +161,8 @@ $DEFAULT_OPTIONS = array(
 		"comment_char"      => '#',
 		"comments_char"     => "\"\"\"",
 		"padding_char"      => " ",
-		"header_padding"    => 1, // Unimplemented(yet).
-		"comment_padding"   => 1, // Unimplemented(yet).
+		"header_padding"    => 1,
+		"comment_padding"   => 1,
 	),
 	"constant_defaults"     => array(
 		"constant_prefix"   => "DEFAULT_",
@@ -206,7 +206,7 @@ function get_defaults(string $group_name = ""): array
 }
 
 //Global Variables
-$default_prefix = "DEFAULT_"; //!TODO Replace me with $defaults["constant_defaults"]["constant_prefix"]
+$target_file_path = "./Script.json";
 $json = "";
 $json_data = array();
 
@@ -262,17 +262,16 @@ function print_comment(string $p_comment, array $defaults = null, int $padding_a
 	$lines = explode("" . $defaults["end_line"], $p_comment);
 	$lines_count = count($lines);
 	if((!$defaults["prefer_multiline"]) || ($lines_count <= 1))
-	{
 		//Print single-line comment(s)
 		foreach($lines as $line)
 			print("" . $defaults["comment_char"] . str_repeat($defaults["padding_char"], $padding_amount) . $line . $defaults["end_line"]);
-	}
 	else
 	{
 		//Print a multiline comment
-		print($defaults["comments_char"] . $defaults["end_line"]);
-		print($p_comment . $defaults["end_line"]);
-		print($defaults["comments_char"] . $defaults["end_line"]);
+		print("" . $defaults["comments_char"] . $defaults["end_line"]);
+		foreach($lines as $line)
+			print("" . str_repeat($defaults["padding_char"], $padding_amount) . $line . $defaults["end_line"]);
+		print("" . $defaults["comments_char"] . $defaults["end_line"]);
 	}
 }
 function print_comments(string|array $p_comments, array $defaults = null, int $padding_amount = -1)
@@ -292,32 +291,23 @@ function print_tooltip_comments(array $a)
 {
 	//Prints tooltip for exported variables. Prints normal comments for non-exported variables and constants.
 	if(empty($a))
-	{
 		//Used for manual formatting.
 		return;
-	}
 	if(!isset($a["tooltip"]))
-	{
 		//Nothing to print.
 		return;
-	}
 	$prefix = "";
 	if(isset($a["export"]))
-	{
 		$prefix = $a["export"] ? "## " : "# ";
-	}
 	else
-	{
 		//Is a normal comment.
 		$prefix = "# ";
-	}
 	foreach($a["tooltip"] as $i => $next)
-	{
 		print($prefix . $next . "\n");
-	}
 }
-function print_constant(array $c)
+function print_constant(array $c, array $defaults = null)
 {
+	//!TODO Next project function to work on...
 	//Format:
 	//{"tooltip":[],"name":"example_constant","type":"float","value":"PI","modes":0}
 	if(empty($c))
@@ -328,7 +318,7 @@ function print_constant(array $c)
 	}
 	if($c["name"] == null or $c["value"] == null)
 	{
-		printd("Failed to print constant value. Array had undefined name or value.", "[WARN]: ");
+		printd("Failed to print constant value. Array had undefined name or value.", "[WARN]: ");//!Debugging
 		return;
 	}
 	print_tooltip_comments($c);
@@ -418,14 +408,14 @@ function preprocess_variable_constants(array $json_data, array $defaults = null)
 	$variables_key = "variables";
 	if(!array_key_exists($variables_key, $json_data))
 	{
-		printd("preprocess_variable_constants() failed to locate any variables in json_data. This maybe intended.");//!Debugging
+		printd("preprocess_variable_constants() failed to locate any variables in json_data. This maybe intended.", "[WARN]: ");//!Debugging
 		$json_data[$variables_key] = array();
 		return($json_data);
 	}
 	$constants_key = "constants";
 	if(!array_key_exists($constants_key, $json_data))
 	{
-		printd("preprocess_variable_constants() failed to locate any constants in json_data. This maybe intended.");//!Debugging
+		printd("preprocess_variable_constants() failed to locate any constants in json_data. This maybe intended.", "[WARN]: ");//!Debugging
 		$json_data[$constants_key] = array();
 	}
 	//Both arrays exist in json_data at this point.
@@ -512,23 +502,23 @@ function print_function(array $f)
 }
 function print_script( array $json_data, int $script_mode = 0 )
 {
-	//Processes and prints a GDScript from json_data
+	//Processes and prints a GDScript from JSON data stored in associative array $json_data.
 	//Pre-Processing
-	$json_data = preprocess_variable_constants($json_data, null);
+	$json_data = preprocess_variable_constants($json_data);
 	//Print Header Comments
 	$header_comments_key = "header_comments";
 	if(array_key_exists($header_comments_key, $json_data))
-		print_comments($json_data[$header_comments_key], null, 0);
-	//Print Constants
-	if(isset($json_data["constants"]))
 	{
-		print("########################\n");
-		print("# Constants / Defaults #\n");
-		print("########################\n");
-		foreach($json_data["constants"] as $i => $next)
-		{
+		print_comments($json_data[$header_comments_key]);
+		print("\n");
+	}
+	//Print Constants
+	$constants_key = "constants";
+	if(array_key_exists($constants_key, $json_data))
+	{
+		print_header("Constants / Defaults");
+		foreach($json_data[$constants_key] as $next)
 			print_constant($next);
-		}
 		print("\n");
 	}
 	//Print Variables
@@ -559,7 +549,7 @@ function print_script( array $json_data, int $script_mode = 0 )
 
 // Start main execution.
 printd("Script's main execution has started.");//!Debugging
-$json_data = load_json('./Script.json');
+$json_data = load_json($target_file_path);
 if($json_data == null)
 {
 	printd("Failed to parse JSON data.");//!Debugging
