@@ -92,30 +92,7 @@ if($debug_mode)
 	error_reporting(E_ALL);
 }
 
-//String/Array Function(s)
-function implode_r(string $glue, $a, bool $reverse = false)
-{
-	//Returns string values of elements of a recursively joined by glue.
-	if(is_string($a))
-		return $a;
-	if(is_array($a))
-	{
-		//Handle Array
-		$a_count = count($a);
-		if($a_count <= 0)
-			return "";
-		if($reverse)
-			$a = array_reverse($a);
-		$buffer = "";
-		foreach($a as $e)
-		{
-			$buffer .= implode_r($glue, $e, $reverse);
-			$buffer .= $glue;
-		}
-		return substr($buffer, 0, strlen($buffer) - strlen($glue));
-	}
-	return strval($a);
-}
+//Array Function(s)
 //Splat operator "..." requires PHP Core version of 5.6 or higher.
 function array_merge_shallow(array $base_array, array ...$next_arrays):array
 {
@@ -123,15 +100,31 @@ function array_merge_shallow(array $base_array, array ...$next_arrays):array
 	//Array elements in base_array are maintained. Overlapping keys are replaced see array_merge.
 	//Returns merged results(array).
 	foreach($next_arrays as $next_array)
-	{
 		foreach($next_array as $key => $value)
 		{
 			if(is_array($value))
 				continue;
 			$base_array[$key] = $value;
 		}
-	}
 	return $base_array;
+}
+#Code from: https://stackoverflow.com/questions/1319903/how-to-flatten-a-multidimensional-array
+function array_flatten(array $array)
+{
+	//Requires PHP version 5.3+
+    $return = array();
+    array_walk_recursive($array, function($a) use (&$return) { $return[] = $a; });
+    return $return;
+}
+//Modified code from source: https://stackoverflow.com/questions/173400/how-to-check-if-php-array-is-associative-or-sequential
+if (!function_exists('array_is_list')) {
+	// This check allows script's version check to stay at 8 rather than 8.1
+	function array_is_list(array $arr)
+	{
+		if($arr === [])
+			return true;
+		return array_keys($arr) === range(0, count($arr) - 1);
+	}
 }
 
 //JSON Function(s)
@@ -264,139 +257,115 @@ function print_comment(string $p_comment, array $defaults = null, int $padding_a
 	if((!$defaults["prefer_multiline"]) || ($lines_count <= 1))
 		//Print single-line comment(s)
 		foreach($lines as $line)
+		{
 			print("" . $defaults["comment_char"] . str_repeat($defaults["padding_char"], $padding_amount) . $line . $defaults["end_line"]);
+		}
 	else
 	{
 		//Print a multiline comment
 		print("" . $defaults["comments_char"] . $defaults["end_line"]);
 		foreach($lines as $line)
+		{
 			print("" . str_repeat($defaults["padding_char"], $padding_amount) . $line . $defaults["end_line"]);
+		}
 		print("" . $defaults["comments_char"] . $defaults["end_line"]);
 	}
 }
 function print_comments(string|array $p_comments, array $defaults = null, int $padding_amount = -1)
 {
 	//Prints multiple comments using values from defaults with optional padding.
+	//Expected Format(s):
+	//"A comment string."
+	//["An example","comment that","is multiple lines."]
+	//{"comment":"A comment with it's padding specified.","comment_padding":3}
 	if($defaults == null)
 		//No defaults provided, using the generic defaults.
 		$defaults = get_defaults("comment");
 	if(is_array($p_comments))
-		//Handle array(s) recursively
-		print_comments(implode_r("" . $defaults["end_line"], $p_comments), $defaults, $padding_amount);
+	{
+		$comment_key = "comment";
+		if(array_is_list($p_comments) || !array_key_exists($comment_key, $p_comments))
+		{
+			//Handle array(s) recursively
+			foreach($p_comments as $comment)
+				print_comments($comment, $defaults, $padding_amount);
+		}
+		else
+		{
+			$padding_key = "comment_padding";
+			if(array_key_exists($padding_key, $p_comments))
+				$padding_amount = $p_comments[$padding_key];
+			print_comments($p_comments[$comment_key], $defaults, $padding_amount);
+		}
+	}
 	else
 		//Handle string(s)
-		print_comment($p_comments, $defaults, $padding_amount);
+		print_comment(strval($p_comments), $defaults, $padding_amount);
 }
-function print_tooltip_comments(array $a)
+function print_variable(array $v, array $defaults = null, bool $is_constant = false)
 {
-	//Prints tooltip for exported variables. Prints normal comments for non-exported variables and constants.
-	if(empty($a))
-		//Used for manual formatting.
-		return;
-	if(!isset($a["tooltip"]))
-		//Nothing to print.
-		return;
-	$prefix = "";
-	if(isset($a["export"]))
-		$prefix = $a["export"] ? "## " : "# ";
-	else
-		//Is a normal comment.
-		$prefix = "# ";
-	foreach($a["tooltip"] as $i => $next)
-		print($prefix . $next . "\n");
-}
-function print_constant(array $c, array $defaults = null)
-{
-	//!TODO Next project function to work on...
-	//Format:
-	//{"tooltip":[],"name":"example_constant","type":"float","value":"PI","modes":0}
-	if(empty($c))
-	{
-		//Empty/Null Arrays can be used for manual spacing.
-		print("\n");
-		return;
-	}
-	if($c["name"] == null or $c["value"] == null)
-	{
-		printd("Failed to print constant value. Array had undefined name or value.", "[WARN]: ");//!Debugging
-		return;
-	}
-	print_tooltip_comments($c);
-	print("const " . strtoupper($c["name"]));
-	if($c["type"])
-	{
-		print(":" . $c["type"]);
-	}
-	print(" = " . $c["value"]);
-	if(isset($c["comment"]))
-	{
-		print_comment($c["comment"]);
-	}
-	else
-	{
-		print("\n");
-	}
-}
-function print_variable(array $v)
-{
-	global $default_prefix;
-	//Format:
-	//{"tooltip":[],"export":true,"name":"example_variable","type":"float","value":"PI","modes":0,"generate_default":true,"setget":"function_name"}
+	//Expected $v Format:
+	//{"tooltip":[],"comments":[],"export":true,"name":"example_variable","type":"float","value":"PI","modes":0,"generate_default":true,"setget":"function_name"}
 	//Validate inputs
+	if($defaults == null)
+		$defaults = get_defaults("constant");
 	if($v == null)
 	{
 		//Used for manual formatting.
-		print("\n");
+		print("" . $defaults["end_line"]);
 		return;
 	}
-	if($v["export"] == null){ $v["export"] = false; }
-	if($v["name"] == null or strlen($v["name"]) <= 0)//Warning: strlen(null) is deprecated.
+	$export_key = "export";
+	if(!array_key_exists($export_key, $v))
+		$v[$export_key] = $defaults["export_variable"];
+	$name_key = "name";
+	if(!array_key_exists($name_key, $v))
 	{
 		printd("Failed to print variable. Variable name was undefined or empty.", "[WARN]: ");
 		return;
 	}
-	if(!isset($v["generate_default"])){ $v["generate_default"] = false; }
-	//Print tooltip(if needed.)
-	print_tooltip_comments($v);
+	$generate_key = "generate_default";
+	if(!array_key_exists($generate_key, $v))
+		$v[$generate_key] = $defaults["generate_constant"];
 	//Print it.
-	if($v["export"])
-	{
-		print("export");
-		if($v["type"])
-		{
-			print("(" . $v["type"] . ")");
-		}
-		print(" ");
-	}
-	print("var " . $v["name"]);
-	if($v["type"])
-	{
-		print(":" . $v["type"]);
-	}
-	if($v["value"])
-	{
-		print(" = ");
-		if($v["generate_default"] == false)
-		{
-			print($v["value"]);
-		}else{
-			print("DEFAULT_" . strtoupper($v["name"]));
-		}
-	}
-	if(isset($v["setget"])){ print(" setget " . $v["setget"]); }
-	if(isset($v["comment"]))
-	{
-		print_comment($v["comment"]);
-	}
+	$comments_key = "comments";
+	if(array_key_exists($comments_key, $v))
+		print_comments($v["comments"]);
+	$type_key = "type";
+	if($is_constant)
+		print("const " . strtoupper($v[$name_key]));
 	else
 	{
-		print("\n");
+		if($v[$export_key])
+		{
+			print("export");
+			if(array_key_exists($type_key, $v))
+				print("(" . $v[$type_key] . ")");
+			print(" ");
+		}
+		print("var " . $v[$name_key]);
 	}
+	if(array_key_exists($type_key, $v))
+		print(":" . $v[$type_key]);
+	$value_key = "value";
+	if(array_key_exists($value_key, $v))
+	{
+		print(" = ");
+		if(!$v[$generate_key])
+			print("" . $v[$value_key]);
+		else
+			print("" . $defaults["constant_prefix"] . strtoupper($v[$name_key]) . $defaults["constant_suffix"]);
+	}
+	$setget_key = "setget";
+	if((!$is_constant) && (array_key_exists($setget_key, $v)))
+		print(" setget " . $v[$setget_key]);
+	print("" . $defaults["end_line"]);
 }
 function preprocess_variable_constants(array $json_data, array $defaults = null)
 {
 	//Pushes any generated constant values from json_data["variables"] array to json_data["constants"] array,
 	// unless constant value already exists in said array.
+	//Unsets generate_key values of variables after completed.
 	//Assumes json_data is loaded and valid.
 	//Returns updated $json_data(array).
 	if($defaults == null)
@@ -405,18 +374,18 @@ function preprocess_variable_constants(array $json_data, array $defaults = null)
 		$defaults = get_defaults("constant");
 	}
 	//Validate json_data arrays.
+	$constants_key = "constants";
+	if(!array_key_exists($constants_key, $json_data))
+	{
+		printd("preprocess_variable_constants() failed to locate any constants in json_data. This maybe intended.", "[WARN]: ");//!Debugging
+		$json_data[$constants_key] = array();
+	}
 	$variables_key = "variables";
 	if(!array_key_exists($variables_key, $json_data))
 	{
 		printd("preprocess_variable_constants() failed to locate any variables in json_data. This maybe intended.", "[WARN]: ");//!Debugging
 		$json_data[$variables_key] = array();
 		return($json_data);
-	}
-	$constants_key = "constants";
-	if(!array_key_exists($constants_key, $json_data))
-	{
-		printd("preprocess_variable_constants() failed to locate any constants in json_data. This maybe intended.", "[WARN]: ");//!Debugging
-		$json_data[$constants_key] = array();
 	}
 	//Both arrays exist in json_data at this point.
 	$name_key = "name";
@@ -442,13 +411,70 @@ function preprocess_variable_constants(array $json_data, array $defaults = null)
 				$type_key => $value[$type_key],
 				$value_key => $value[$value_key]
 			));
+			unset($json_data[$variables_key][$generate_key]);
 		}
 	}
 	return($json_data);
 }
+function preprocess_tooltips(array $json_data, array $defaults = null)
+{
+	//Based on export flag of variables in json_data,
+	//converts any tool-tip values to appropriate associative or list type comments.
+	//Unsets all variable entries tooltip values.
+	//Returns updated $json_data(array).
+	if($defaults == null)
+		$defaults = get_defaults("comment");
+	$variables_key = "variables";
+	if(!array_key_exists($variables_key, $json_data))
+	{
+		printd("preprocess_tooltips() failed to locate any variables in json_data. This maybe intended.", "[WARN]: ");//!Debugging
+		$json_data[$variables_key] = array();
+	}
+	$padding_key = "comment_padding";
+	$export_key = "export";
+	$name_key = "name";
+	$comments_key = "comments";
+	$tooltip_key = "tooltip";
+	foreach($json_data[$variables_key] as $i => $variable)
+	{
+		if(!array_key_exists($name_key, $variable))
+			// Probably being used for manual formatting.
+			continue;
+		if(!array_key_exists($comments_key, $variable))
+		{
+			printd("preprocess_tooltips() failed to locate any comments in json_data for variable: '" . $variable[$name_key] . "'. This maybe intended.", "[WARN]: ");//!Debugging
+			$json_data[$variables_key][$i][$comments_key] = array();
+		}
+		if(!array_key_exists($tooltip_key, $variable))
+			continue;
+		$mark = $defaults["comment_char"];
+		$padding_str = str_repeat($defaults["padding_char"], $defaults[$padding_key]);
+		if($defaults["export_variable"])
+		{
+			if(array_key_exists($export_key, $variable))
+				if(!$variable[$export_key])
+					$mark = "";
+		}
+		elseif(!array_key_exists($export_key, $variable))
+			//Default to non-export normal comment.
+			$mark = "";
+		elseif(!$variable[$export_key])
+			//(unnecessarily)Explicit non-export normal comment.
+			$mark = "";
+		//tool-tip array should already be a flat list-type array. But just to be safe...
+		foreach(array_flatten($variable[$tooltip_key]) as $tooltip)
+			array_push($json_data[$variables_key][$i][$comments_key],
+			array(
+				"comment" => ("" . $mark . $padding_str . $tooltip),
+				$padding_key => 0,
+			));
+		unset($json_data[$variables_key][$i][$tooltip_key]);
+	}
+	return $json_data;
+}
 function print_function(array $f)
 {
-	//Prints a GDScript function from json associative array
+	//Prints a GDScript function from JSON associative array
 	$temp_flag = false;
 	$temp_count = 0;
 	if($f == null)
@@ -504,7 +530,7 @@ function print_script( array $json_data, int $script_mode = 0 )
 {
 	//Processes and prints a GDScript from JSON data stored in associative array $json_data.
 	//Pre-Processing
-	$json_data = preprocess_variable_constants($json_data);
+	$json_data = preprocess_tooltips(preprocess_variable_constants($json_data));
 	//Print Header Comments
 	$header_comments_key = "header_comments";
 	if(array_key_exists($header_comments_key, $json_data))
@@ -518,7 +544,7 @@ function print_script( array $json_data, int $script_mode = 0 )
 	{
 		print_header("Constants / Defaults");
 		foreach($json_data[$constants_key] as $next)
-			print_constant($next);
+			print_variable($next, null, true);
 		print("\n");
 	}
 	//Print Variables
@@ -527,9 +553,7 @@ function print_script( array $json_data, int $script_mode = 0 )
 	{
 		print_header("Variables / Exported Variables");
 		foreach($json_data[$variables_key] as $i => $next)
-		{
-			print_variable($next);
-		}
+			print_variable($next, null, false);
 		print("\n");
 	}
 	//Functions/Methods

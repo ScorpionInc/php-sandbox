@@ -3,9 +3,9 @@
 	"Gimbal node based 3D camera control script.",
 	"Written by: ScorpionInc",
 	"Version: 0.0.5a",
-	"## WARNING ###",
+	{"comment":"## WARNING ###","comment_padding":0},
 	"This scripts changes the current scene tree by adding two \"gimbal\" nodes at the camera position for easier rotation math.",
-	"## WARNING ###"
+	{"comment":"## WARNING ###","comment_padding":0}
 	],
 "constants":[
 		{"tooltip":["Defined for reference in radian angle calculations."],
