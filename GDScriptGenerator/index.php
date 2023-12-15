@@ -271,7 +271,7 @@ function print_comment(string $p_comment, array $defaults = null, int $padding_a
 	{
 		//Print a multiline comment
 		print($defaults["comments_char"] . $defaults["end_line"]);
-		print($p_comment);
+		print($p_comment . $defaults["end_line"]);
 		print($defaults["comments_char"] . $defaults["end_line"]);
 	}
 }
@@ -280,7 +280,7 @@ function print_comments(string|array $p_comments, array $defaults = null, int $p
 	//Prints multiple comments using values from defaults with optional padding.
 	if($defaults == null)
 		//No defaults provided, using the generic defaults.
-		$defaults = get_defaults();
+		$defaults = get_defaults("comment");
 	if(is_array($p_comments))
 		//Handle array(s) recursively
 		print_comments(implode_r("" . $defaults["end_line"], $p_comments), $defaults, $padding_amount);
@@ -516,14 +516,9 @@ function print_script( array $json_data, int $script_mode = 0 )
 	//Pre-Processing
 	$json_data = preprocess_variable_constants($json_data, null);
 	//Print Header Comments
-	if(isset($json_data["header_comments"]))
-	{
-		foreach($json_data["header_comments"] as $i => $next)
-		{
-			print_comment($next, null, 0);
-		}
-		print("\n");
-	}
+	$header_comments_key = "header_comments";
+	if(array_key_exists($header_comments_key, $json_data))
+		print_comments($json_data[$header_comments_key], null, 0);
 	//Print Constants
 	if(isset($json_data["constants"]))
 	{
