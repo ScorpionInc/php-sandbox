@@ -522,24 +522,22 @@ function print_script( array $json_data, int $script_mode = 0 )
 		print("\n");
 	}
 	//Print Variables
-	if(isset($json_data["variables"]))
+	$variables_key = "variables";
+	if(array_key_exists($variables_key, $json_data))
 	{
-		print("##################################\n");
-		print("# Variables / Exported Variables #\n");
-		print("##################################\n");
-		foreach($json_data["variables"] as $i => $next)
+		print_header("Variables / Exported Variables");
+		foreach($json_data[$variables_key] as $i => $next)
 		{
 			print_variable($next);
 		}
 		print("\n");
 	}
 	//Functions/Methods
-	if(isset($json_data["functions"]))
+	$functions_key = "functions";
+	if(array_key_exists($functions_key, $json_data))
 	{
-		print("####################################################\n");
-		print("# Functions / Methods / Events / Signals / SetGets #\n");
-		print("####################################################\n");
-		foreach($json_data["functions"] as $i => $next)
+		print_header("Functions / Methods / Events / Signals / SetGets");
+		foreach($json_data[$functions_key] as $i => $next)
 		{
 			print_function($next);
 		}
