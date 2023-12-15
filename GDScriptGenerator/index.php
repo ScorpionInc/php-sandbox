@@ -194,7 +194,8 @@ $DEFAULT_OPTIONS = array(
 			"pass",
 		),
 	),
-	"godot_version"          => 4,
+	"godot_version"          => 4, // Desired code output version.
+	"code_version"           => 2, // Version of Godot code was made in.
 	"end_line"               => "\n",
 	"export_variable"        => false,
 	"print_header_constants" => true,
@@ -559,13 +560,23 @@ $GODOT2_TO_GODOT3_RENAMES = array(
 	["ColorRamp", "Gradient"],
 	["look_at_from_pos(", "look_at_from_position("],
 );
-function godot2_to_godot3(string code_line)
+function godot2_to_godot3(string $code_line)
 {
-	//!TODO
+	//Attempts a crude migration from Godot 2 code in code_line to Godot 3 code.
+	global $GODOT2_TO_GODOT3_RENAMES;
+	//Do renames.
+	foreach($GODOT2_TO_GODOT3_RENAMES as $next_rename)
+		$code_line = str_replace($next_rename[0], $next_rename[1], $code_line);
+	return $code_line;
 }
-function godot3_to_godot2(string code_line)
+function godot3_to_godot2(string $code_line)
 {
-	//!TODO
+	//Attempts a crude migration from Godot 3 code in code_line to Godot 2 code.
+	global $GODOT2_TO_GODOT3_RENAMES;
+	//Do renames.
+	foreach(array_reverse($GODOT2_TO_GODOT3_RENAMES) as $next_rename)
+		$code_line = str_replace($next_rename[0], $next_rename[1], $code_line);
+	return $code_line;
 }
 //https://gist.github.com/WolfgangSenff/168cb0cbd486c8c9cd507f232165b976
 $GODOT3_TO_GODOT4_RENAMES = array(
@@ -619,13 +630,23 @@ $GODOT3_TO_GODOT4_RENAMES = array(
 	["get_data(", "get_image("],
 	["get_rect(", "get_region("],
 );
-function godot3_to_godot4(string code_line)
+function godot3_to_godot4(string $code_line)
 {
-	//!TODO
+	//Attempts a crude migration from Godot 3 code in code_line to Godot 4 code.
+	global $GODOT3_TO_GODOT4_RENAMES;
+	//Do renames.
+	foreach($GODOT3_TO_GODOT4_RENAMES as $next_rename)
+		$code_line = str_replace($next_rename[0], $next_rename[1], $code_line);
+	return $code_line;
 }
-function godot4_to_godot3(string code_line)
+function godot4_to_godot3(string $code_line)
 {
-	//!TODO
+	//Attempts a crude migration from Godot 4 code in code_line to Godot 3 code.
+	global $GODOT3_TO_GODOT4_RENAMES;
+	//Do renames.
+	foreach(array_reverse($GODOT3_TO_GODOT4_RENAMES) as $next_rename)
+		$code_line = str_replace($next_rename[0], $next_rename[1], $code_line);
+	return $code_line;
 }
 
 function is_entry_a_function(array $f)
