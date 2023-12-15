@@ -432,9 +432,14 @@ function preprocess_variable_constants(array $json_data, array $defaults = null)
 		{
 			if(!$value[$generate_key])
 				continue;
+			$new_constants_name = ("" . $defaults["constant_prefix"] . $value[$name_key] . $defaults["constant_suffix"]);
+			if(in_array($new_constants_name, $json_data[$constants_key]))
+				//Already has a constant defined with the same name.
+				//Continues to prevent overwriting/name conflicts.
+				continue;
 			array_push($json_data[$constants_key],
 			array(
-				$name_key => $defaults["constant_prefix"] . $value[$name_key] . $defaults["constant_suffix"],
+				$name_key => $new_constants_name,
 				$type_key => $value[$type_key],
 				$value_key => $value[$value_key]
 			));
