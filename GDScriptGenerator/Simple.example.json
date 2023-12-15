@@ -1,0 +1,11 @@
+{
+	"header_comments":[
+		"Example simple Godot script JSON."
+	],
+	"variables":[
+		{"tooltip":["Used to specify whom to say hello to."],"export":true,"name":"greeted","type":"String","value":"\"world\""}
+	],
+	"functions":[
+		{"name":"_ready","code":"print(\"Hello, \" + self.greeted + \"!\")"}
+	]
+}

@@ -92,6 +92,31 @@ if($debug_mode)
 	error_reporting(E_ALL);
 }
 
+//String Function(s)
+function implode_r(string $glue, $a, bool $reverse = false)
+{
+	//Returns string values of elements joined by glue recursively.
+	if(is_string($a))
+		return $a;
+	if(is_array($a))
+	{
+		//Handle Array
+		$a_count = count($a);
+		if($a_count <= 0)
+			return "";
+		if($reverse)
+			$a = array_reverse($a);
+		$buffer = "";
+		foreach($a as $e)
+		{
+			$buffer .= implode_r($glue, $e, $reverse);
+			$buffer .= $glue;
+		}
+		return substr($buffer, 0, strlen($buffer) - strlen($glue));
+	}
+	return strval($a);
+}
+
 //Array Function(s)
 //Splat operator "..." requires PHP Core version of 5.6 or higher.
 function array_merge_shallow(array $base_array, array ...$next_arrays):array
@@ -169,6 +194,7 @@ $DEFAULT_OPTIONS = array(
 			"pass",
 		),
 	),
+	"godot_version"          => 4,
 	"end_line"               => "\n",
 	"export_variable"        => false,
 	"print_header_constants" => true,
@@ -207,6 +233,7 @@ function get_defaults(string $group_name = ""): array
 
 //Global Variables
 $target_file_path = "./Script.json";
+//$target_file_path = "./Simple.example.json";
 $json = "";
 $json_data = array();
 
@@ -269,7 +296,7 @@ function print_comment(string $p_comment, array $defaults = null, int $padding_a
 		}
 	else
 	{
-		//Print a multiline comment
+		//Print a multi-line comment
 		print("" . $defaults["comments_char"] . $defaults["end_line"]);
 		foreach($lines as $line)
 		{
@@ -345,8 +372,10 @@ function print_variable(array $v, array $defaults = null, bool $is_constant = fa
 	{
 		if($v[$export_key])
 		{
+			if($defaults["godot_version"] > 3)
+				print("@");
 			print("export");
-			if(array_key_exists($type_key, $v))
+			if(array_key_exists($type_key, $v) && $defaults["godot_version"] <= 3)
 				print("(" . $v[$type_key] . ")");
 			print(" ");
 		}
@@ -363,6 +392,8 @@ function print_variable(array $v, array $defaults = null, bool $is_constant = fa
 		else
 			print("" . $defaults["constant_prefix"] . strtoupper($v[$name_key]) . $defaults["constant_suffix"]);
 	}
+	//!TODO seperate set and get into seperate key values. Make value contents of function rather than name of function.
+	// Have name of function auto-generate in Godot <=3.5 and not used in Godot 4+.
 	$setget_key = "setget";
 	if((!$is_constant) && (array_key_exists($setget_key, $v)))
 		print(" setget " . $v[$setget_key]);
@@ -486,7 +517,6 @@ function is_entry_a_function(array $f)
 }
 function is_entry_a_method(array $m)
 {
-	//!TODO utilize...
 	//Returns true if the type and/or code indicate it's probably a method.
 	//Returns false if explicitly found to be a function.
 	$type_key = "type";
@@ -507,8 +537,46 @@ function is_entry_a_method(array $m)
 }
 function preprocess_functions(array $json_data, array $defaults = null)
 {
-	//!TODO Implement and utilize...
 	//Separates methods from functions to get grouped during printing.
+	//Flattens code array into a string.
+	if($defaults == null)
+		$defaults = get_defaults("function");
+	$functions_key = "functions";
+	if(!array_key_exists($functions_key, $json_data))
+		$json_data[$functions_key] = array();
+	$methods_key = "methods";
+	if(!array_key_exists($methods_key, $json_data))
+		$json_data[$methods_key] = array();
+	$code_key = "code";
+	foreach($json_data[$functions_key] as $key => &$function)
+	{
+		//Implode code data.
+		if(!array_key_exists($code_key, $function))
+			$function[$code_key] = implode_r($defaults["end_line"] . "\t", $defaults["function_code"]);
+		else
+			$function[$code_key] = implode_r($defaults["end_line"] . "\t", $function[$code_key]);
+		//Sort into methods as needed.
+		if(is_entry_a_method($function))
+		{
+			array_push($json_data[$methods_key], $function);
+			unset($json_data[$functions_key][$key]);
+		}
+	}
+	foreach($json_data[$methods_key] as $key => &$method)
+	{
+		//Implode code data.
+		if(!array_key_exists($code_key, $method))
+			$method[$code_key] = implode_r($defaults["end_line"] . "\t", $defaults["function_code"]);
+		else
+			$method[$code_key] = implode_r($defaults["end_line"] . "\t", $method[$code_key]);
+		//Sort into methods as needed.
+		if(is_entry_a_function($method))
+		{
+			array_push($json_data[$functions_key], $method);
+			unset($json_data[$methods_key][$key]);
+		}
+	}
+	return $json_data;
 }
 function print_function(array $f, array $defaults = null)
 {
@@ -523,7 +591,7 @@ function print_function(array $f, array $defaults = null)
 		return;
 	}
 	$name_key = "name";
-	if($f[$name_key] == null or strlen($f[$name_key]) <= 0)//Warning: strlen(null) is deprecated.
+	if(!array_key_exists($name_key, $f))
 	{
 		printd("Failed to print function. Function name was undefined or empty.", "[WARN]: ");
 		return;
@@ -542,7 +610,7 @@ function print_function(array $f, array $defaults = null)
 	{
 		foreach($f[$parameters_key] as $i => $next)
 		{
-			print($next);
+			print_r($next);
 			if(($i + 1) < $temp_count)
 				print(", ");
 		}
@@ -556,57 +624,68 @@ function print_function(array $f, array $defaults = null)
 	}
 	print(":\n");
 	if(isset($f["code"]))
-	{
-		if(count($f["code"]) > 0)
-			$temp_flag = true;
-	}
-	if($temp_flag)
-	{
-		foreach($f["code"] as $i => $next)
-			print("\t" . $next . "\n");
-	} else {
-		print("\tpass\n");
-	}
+		print("\t" . $f["code"] . "\n");
 	$temp_flag = false;
 }
 function print_script( array $json_data, int $script_mode = 0 )
 {
 	//Processes and prints a GDScript from JSON data stored in associative array $json_data.
 	//Pre-Processing
-	$json_data = preprocess_tooltips(preprocess_variable_constants($json_data));
+	$json_data = preprocess_functions(preprocess_tooltips(preprocess_variable_constants($json_data)));
 	//Print Header Comments
 	$header_comments_key = "header_comments";
 	if(array_key_exists($header_comments_key, $json_data))
 	{
-		print_comments($json_data[$header_comments_key]);
+		if(count($json_data[$header_comments_key]) > 0)
+			print_comments($json_data[$header_comments_key]);
 		print("\n");
 	}
 	//Print Constants
 	$constants_key = "constants";
 	if(array_key_exists($constants_key, $json_data))
 	{
-		print_header("Constants / Defaults");
-		foreach($json_data[$constants_key] as $next)
-			print_variable($next, null, true);
-		print("\n");
+		if(count($json_data[$constants_key]) > 0)
+		{
+			print_header("Constants / Defaults");
+			foreach($json_data[$constants_key] as $next)
+				print_variable($next, null, true);
+			print("\n");
+		}
 	}
 	//Print Variables
 	$variables_key = "variables";
 	if(array_key_exists($variables_key, $json_data))
 	{
-		print_header("Variables / Exported Variables");
-		foreach($json_data[$variables_key] as $i => $next)
-			print_variable($next, null, false);
-		print("\n");
+		if(count($json_data[$variables_key]) > 0)
+		{
+			print_header("Variables / Exported Variables");
+			foreach($json_data[$variables_key] as $i => $next)
+				print_variable($next, null, false);
+			print("\n");
+		}
 	}
 	//Functions/Methods
 	$functions_key = "functions";
 	if(array_key_exists($functions_key, $json_data))
 	{
-		print_header("Functions / Methods / Events / Signals / SetGets");
-		foreach($json_data[$functions_key] as $i => $next)
-			print_function($next);
-		print("\n");
+		if(count($json_data[$functions_key]) > 0)
+		{
+			print_header("Functions / Events / Signals / SetGets");
+			foreach($json_data[$functions_key] as $i => $next)
+				print_function($next);
+			print("\n");
+		}
+	}
+	$methods_key = "methods";
+	if(array_key_exists($methods_key, $json_data))
+	{
+		if(count($json_data[$methods_key]) > 0)
+		{
+			print_header("Methods");
+			foreach($json_data[$methods_key] as $i => $next)
+				print_function($next);
+			print("\n");
+		}
 	}
 }
 

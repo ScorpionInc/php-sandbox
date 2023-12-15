@@ -1,17 +1,20 @@
 {
-"header_comments":[
-	"Gimbal node based 3D camera control script.",
-	"Written by: ScorpionInc",
-	"Version: 0.0.5a",
-	{"comment":"## WARNING ###","comment_padding":0},
-	"This scripts changes the current scene tree by adding two \"gimbal\" nodes at the camera position for easier rotation math.",
-	{"comment":"## WARNING ###","comment_padding":0}
+	"defaults":[
+		{"export_variable":true}
 	],
-"constants":[
-		{"tooltip":["Defined for reference in radian angle calculations."],
-		"name":"two_pi","type":"float","value":"(2.0 * PI)","modes":0}
+	"extends":"Node",
+	"header_comments":[
+		"Gimbal node based 3D camera control script.",
+		"Written by: ScorpionInc",
+		"Version: 0.0.5a",
+		{"comment":"## WARNING ###","comment_padding":0},
+		"This scripts changes the current scene tree by adding two \"gimbal\" nodes at the camera position for easier rotation math.",
+		{"comment":"## WARNING ###","comment_padding":0}
 	],
-"variables":[
+	"constants":[
+		{"tooltip":["Defined for reference in radian angle calculations."],"name":"two_pi","type":"float","value":"(2.0 * PI)","modes":0}
+	],
+	"variables":[
 		{"tooltip":["Used to toggle debugging mode to find bugs."],
 		"export":true,"name":"debug_mode","type":"bool","value":"false","modes":0},
 		{"tooltip":["Specifies the visual mesh to use when displaying gimbal nodes."],
@@ -71,8 +74,8 @@
 		{"export":true,"name":"roll_max_degrees","type":"float","value":"0.0","modes":0,"generate_default":false,"setget":"roll_max_degrees_set"},
 		{}
 	],
-"functions":[
-		{"name":"add_f","type":"float","parameters":["floatA","floatB"],"code":["#This is a test function.","return floatA + floatB;"]},
-		{"name":"_ready","code":[]}
+	"functions":[
+		{"name":"add_f","type":"float","parameters":["floatA","floatB",{}],"code":["#This is a test function.","return floatA + floatB;"]},
+		{"name":"_ready"}
 	]
 }
