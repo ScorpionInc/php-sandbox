@@ -100,7 +100,8 @@ function implode_r(string $glue, $a, bool $reverse = false)
 	//Returns string values of elements of a recursively joined by glue.
 	if(is_string($a))
 		return $a;
-	if(is_array($a)){
+	if(is_array($a))
+	{
 		//Handle Array
 		$a_count = count($a);
 		if($a_count <= 0)
@@ -243,13 +244,23 @@ function print_comment(string $p_comment, array $defaults = null, int $padding_a
 function print_comments(string|array $p_comments, array $defaults = null, int $padding_amount = 1)
 {
 	//Prints multiple comments using values from defaults with optional padding.
+	global $DEFAULT_OPTIONS;
+	if($defaults == null)
+	{
+		//No defaults provided, using the generic defaults.
+		$defaults = $DEFAULT_OPTIONS["global_defaults"];
+	}
+	elseif(isset($defaults["global_defaults"]))
+	{
+		//Was probably passed all defaults, this function is only using globals.
+		$defaults = $defaults["global_defaults"];
+	}
 	if(is_array($p_comments))
 	{
 		//Handle array(s) recursively
-		foreach($p_comments as $comment)
-			print_comments($comment, $defaults, $padding_amount);
+		print_comments(implode_r("" . $defaults["end_line"], $p_comments), $defaults, $padding_amount);
 	} else {
-		//Handle String(s)
+		//Handle string(s)
 		print_comment($p_comments, $defaults, $padding_amount);
 	}
 }
