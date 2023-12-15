@@ -74,30 +74,9 @@ if(!validate_script_requirements($SCRIPT_VERSION_REQUIREMENTS))
 	die("Internal Server Error, contact administrator.");
 }
 
-//Global Variables
-$DEFAULT_OPTIONS = array(
-	"global_defaults"=>array(
-		"comment_char"=>'#',
-		"end_line"=>"\n",
-	),
-	"constant_prefix"=>"DEFAULT_",
-	"constant_suffix"=>"",
-	"export_variable"=>false,
-	"generate_constant"=>false,
-	"print_header_constants"=>true,
-	"print_header_variables"=>true,
-	"print_header_setgets"=>true,
-	"print_header_functions"=>true,
-	"print_header_methods"=>true,
-	"print_header_events"=>true,
-); // Default values can be replaced via json settings.
-$default_prefix = "DEFAULT_";//Replace me with $defaults["constant_prefix"]
-$debug_mode = false;
-$json = "";
-$json_data = array();
-
 //Debugging/Logging Function(s)
 //!TODO Add option to debug to file(?)
+$debug_mode = false;
 function printd(string $s, string $prefix="[DEBUG]: ", string $suffix="\n") : bool
 {
 	//Prints s only if debug_mode is enabled.
@@ -113,6 +92,30 @@ if($debug_mode)
 {
 	// Show all errors
 	error_reporting(E_ALL);
+}
+
+//String Function(s)
+function implode_r(string $glue, $a, bool $reverse = false)
+{
+	//Returns string values of elements of a recursively joined by glue.
+	if(is_string($a))
+		return $a;
+	if(is_array($a)){
+		//Handle Array
+		$a_count = count($a);
+		if($a_count <= 0)
+			return "";
+		if($reverse)
+			$a = array_reverse($a);
+		$buffer = "";
+		foreach($a as $e)
+		{
+			$buffer .= implode_r($glue, $e, $reverse);
+			$buffer .= $glue;
+		}
+		return substr($buffer, 0, strlen($buffer) - strlen($glue));
+	}
+	return strval($a);
 }
 
 //JSON Function(s)
@@ -131,6 +134,37 @@ function load_json( string $file_path )
 	// Decode the JSON file
 	return(json_decode($json, true, 512));
 }
+
+//Script Specific Stuff
+//Global Variables
+$DEFAULT_OPTIONS = array(
+	"global_defaults"=>array(
+		"prefer_multiline"  => true,
+		"comment_char"      => '#',
+		"comments_char"     => "\"\"\"",
+		"end_line"          => "\n",
+	),
+	"constant_prefix"       => "DEFAULT_",
+	"constant_suffix"       => "",
+	"export_variable"       => false,
+	"generate_constant"     => false,
+	"print_header_constants"=> true,
+	"print_header_variables"=> true,
+	"print_header_setgets"  => true, // Unused in Godot Version 4+
+	"print_header_functions"=> true,
+	"print_header_methods"  => true,
+	"print_header_events"   => true,
+	"header_constants"      => "Script Constant(s) / Default(s)",
+	"header_variables"      => "Script Variable(s) / Exported Variable(s)",
+	"header_setgets"        => "Script setget/set/get Function(s)", // Unused in Godot Version 4+
+	"header_functions"      => "Script Function(s)",
+	"header_methods"        => "Script Method(s)",
+	"header_events"         => "Script Event(s)",
+); // Default values can be replaced via json settings.
+
+$default_prefix = "DEFAULT_";//Replace me with $defaults["constant_prefix"]
+$json = "";
+$json_data = array();
 
 //!TODO
 //The meaning of these flags are/should be script/json specific?
@@ -178,11 +212,46 @@ function print_header(string $s, array $defaults = null)
 	$m = ($defaults["comment_char"] . " " . $s . " " . $defaults["comment_char"]);
 	print implode($defaults["end_line"], [$c_line, $m, $c_line, ""]);
 }
-function print_comment(string $hc, array $defaults = null)
+function print_comment(string $p_comment, array $defaults = null, int $padding_amount = 1)
 {
-	//!TODO
-	//Prints an in-line comment using values from defaults.
-	print("#" . $hc . "\n");
+	//Prints an in-line comment using values from defaults with optional padding.
+	global $DEFAULT_OPTIONS;
+	if($defaults == null)
+	{
+		//No defaults provided, using the generic defaults.
+		$defaults = $DEFAULT_OPTIONS["global_defaults"];
+	}
+	elseif(isset($defaults["global_defaults"]))
+	{
+		//Was probably passed all defaults, this function is only using globals.
+		$defaults = $defaults["global_defaults"];
+	}
+	$lines = explode("" . $defaults["end_line"], $p_comment);
+	$lines_count = count($lines);
+	if((!$defaults["prefer_multiline"]) || ($lines_count <= 1))
+	{
+		//Print single-line comment(s)
+		foreach($lines as $line)
+			print("" . $defaults["comment_char"] . str_repeat(" ", $padding_amount) . $line . $defaults["end_line"]);
+	} else {
+		//Print a multiline comment
+		print($defaults["comments_char"] . $defaults["end_line"]);
+		print($p_comment);
+		print($defaults["comments_char"] . $defaults["end_line"]);
+	}
+}
+function print_comments(string|array $p_comments, array $defaults = null, int $padding_amount = 1)
+{
+	//Prints multiple comments using values from defaults with optional padding.
+	if(is_array($p_comments))
+	{
+		//Handle array(s) recursively
+		foreach($p_comments as $comment)
+			print_comments($comment, $defaults, $padding_amount);
+	} else {
+		//Handle String(s)
+		print_comment($p_comments, $defaults, $padding_amount);
+	}
 }
 function print_tooltip_comments(array $a)
 {
