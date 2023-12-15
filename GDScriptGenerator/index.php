@@ -141,11 +141,14 @@ function load_json( string $file_path )
 //Script Specific Stuff
 //Global Variables
 $DEFAULT_OPTIONS = array(
-	"global_defaults"       => array(
+	"global_defaults"       => array( //!TODO Change to comment_defaults(?)
 		"prefer_multiline"  => true,
 		"comment_char"      => '#',
 		"comments_char"     => "\"\"\"",
 		"end_line"          => "\n",
+		"padding_char"      => " ", // Unimplemented(yet).
+		"header_padding"    => 1, // Unimplemented(yet).
+		"comment_padding"   => 1, // Unimplemented(yet).
 	),
 	"constant_defaults"     => array(
 		"constant_prefix"   => "DEFAULT_",
@@ -167,7 +170,7 @@ $DEFAULT_OPTIONS = array(
 	"header_events"         => "Script Event(s)",
 ); // Default values can be replaced via json settings.
 
-$default_prefix = "DEFAULT_";//Replace me with $defaults["constant_defaults"]["constant_prefix"]
+$default_prefix = "DEFAULT_"; //!TODO Replace me with $defaults["constant_defaults"]["constant_prefix"]
 $json = "";
 $json_data = array();
 
@@ -511,7 +514,7 @@ function print_script( array $json_data, int $script_mode = 0 )
 	{
 		foreach($json_data["header_comments"] as $i => $next)
 		{
-			print_comment($next);
+			print_comment($next, null, 0);
 		}
 		print("\n");
 	}
