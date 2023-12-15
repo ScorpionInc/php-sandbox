@@ -377,19 +377,19 @@ function print_variable(array $v, array $defaults = null, bool $is_constant = fa
 				print("@");
 			print("export");
 			if(array_key_exists($type_key, $v) && $defaults["godot_version"] <= 3)
-				print("(" . $v[$type_key] . ")");
+				print("(" . migrate_code($v[$type_key]) . ")");
 			print(" ");
 		}
 		print("var " . $v[$name_key]);
 	}
 	if(array_key_exists($type_key, $v))
-		print(":" . $v[$type_key]);
+		print(":" . migrate_code($v[$type_key]));
 	$value_key = "value";
 	if(array_key_exists($value_key, $v))
 	{
 		print(" = ");
 		if(!$v[$generate_key])
-			print("" . $v[$value_key]);
+			print("" . migrate_code($v[$value_key]));
 		else
 			print("" . $defaults["constant_prefix"] . strtoupper($v[$name_key]) . $defaults["constant_suffix"]);
 	}
@@ -447,8 +447,8 @@ function preprocess_variable_constants(array $json_data, array $defaults = null)
 			array_push($json_data[$constants_key],
 			array(
 				$name_key => $new_constants_name,
-				$type_key => $value[$type_key],
-				$value_key => $value[$value_key]
+				$type_key => migrate_code($value[$type_key]),
+				$value_key => migrate_code($value[$value_key])
 			));
 			unset($json_data[$variables_key][$generate_key]);
 		}
@@ -629,6 +629,7 @@ $GODOT3_TO_GODOT4_RENAMES = array(
 	["CollisionObject.", "CollisionObject3D."],
 	["get_data(", "get_image("],
 	["get_rect(", "get_region("],
+	["\texport ", "\t@export "],
 );
 function godot3_to_godot4(string $code_line)
 {
@@ -647,6 +648,37 @@ function godot4_to_godot3(string $code_line)
 	foreach(array_reverse($GODOT3_TO_GODOT4_RENAMES) as $next_rename)
 		$code_line = str_replace($next_rename[1], $next_rename[0], $code_line);
 	return $code_line;
+}
+function migrate_code(string|array $code, array $defaults = null)
+{
+	//Walks code up or down versions as needed based upon code_version vs godot_version values in defaults.
+	//Returns migrated_code.
+	if($defaults == null)
+		$defaults = get_defaults();
+	if(is_array($code))
+		foreach($code as &$line)
+			$line = migrated_code($line, $defaults);
+	elseif($defaults["code_version"] < $defaults["godot_version"])
+	{
+		//Walk up
+		if($defaults["code_version"] <= 2)
+			$code = godot2_to_godot3($code);
+		else
+			$code = godot3_to_godot4($code);
+		if(($defaults["code_version"] + 1) < $defaults["godot_version"])
+			$code = godot3_to_godot4($code);
+	}
+	elseif($defaults["code_version"] > $defaults["godot_version"])
+	{
+		//Walk Down
+		if($defaults["code_version"] >= 4)
+			$code = godot4_to_godot3($code);
+		else
+			$code = godot3_to_godot2($code);
+		if(($defaults["code_version"] - 1) > $defaults["godot_version"])
+			$code = godot3_to_godot2($code);
+	}
+	return $code;
 }
 
 function is_entry_a_function(array $f)
@@ -694,11 +726,16 @@ function preprocess_functions(array $json_data, array $defaults = null)
 		if(!array_key_exists($code_key, $function))
 			$function[$code_key] = implode_r($defaults["end_line"] . "\t", $defaults["function_code"]);
 		else
+		{
+			if(is_array($function[$code_key]))
+				foreach($function[$code_key] as &$code_entry)
+					$code_entry = migrate_code($code_entry);
 			$function[$code_key] = implode_r($defaults["end_line"] . "\t", $function[$code_key]);
+		}
 		//Sort into methods as needed.
 		if(is_entry_a_method($function))
 		{
-			$function[$type_key] = "void";
+			$function[$type_key] = migrate_code("void");
 			array_push($json_data[$methods_key], $function);
 			unset($json_data[$functions_key][$key]);
 		}
@@ -709,7 +746,12 @@ function preprocess_functions(array $json_data, array $defaults = null)
 		if(!array_key_exists($code_key, $method))
 			$method[$code_key] = implode_r($defaults["end_line"] . "\t", $defaults["function_code"]);
 		else
+		{
+			if(is_array($method[$code_key]))
+				foreach($method[$code_key] as &$code_entry)
+					$code_entry = migrate_code($code_entry);
 			$method[$code_key] = implode_r($defaults["end_line"] . "\t", $method[$code_key]);
+		}
 		//Sort into methods as needed.
 		if(is_entry_a_function($method))
 		{
@@ -752,7 +794,7 @@ function print_function(array $f, array $defaults = null)
 	print(")");
 	$type_key = "type";
 	if(array_key_exists($type_key, $f))
-		print(" -> " . $f["type"]);
+		print(" -> " . $f[$type_key]);
 	print(":\n");
 	$code_key = "code";
 	if(array_key_exists($code_key, $f))
@@ -773,6 +815,17 @@ function print_script( array $json_data, int $script_mode = 0 )
 			print("\n");
 		}
 	}
+	//Print Script definers
+	$extends_key = "extends";
+	if(array_key_exists($extends_key, $json_data))
+		if(strlen($json_data[$extends_key]) > 0)
+			print("extends " . $json_data[$extends_key] . "\n");
+	$class_name_key = "class_name";
+	if(array_key_exists($class_name_key, $json_data))
+		if(strlen($json_data[$class_name_key]) > 0)
+			print("class_name " . $json_data[$class_name_key] . "\n");
+	if(array_key_exists($extends_key, $json_data) || array_key_exists($class_name_key, $json_data))
+		print("\n");
 	//Print Constants
 	$constants_key = "constants";
 	if(array_key_exists($constants_key, $json_data))

@@ -2,7 +2,8 @@
 	"defaults":[
 		{"export_variable":true}
 	],
-	"extends":"Node",
+	"extends":"Node3D",
+	"class_name":"SiCamera",
 	"header_comments":[
 		"Gimbal node based 3D camera control script.",
 		"Written by: ScorpionInc",
