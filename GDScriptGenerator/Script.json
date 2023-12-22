@@ -13,7 +13,10 @@
 		{"comment":"## WARNING ###","comment_padding":0}
 	],
 	"constants":[
-		{"tooltip":["Defined for reference in radian angle calculations."],"name":"two_pi","type":"float","value":"(2.0 * PI)","modes":0}
+		{"tooltip":["Defined for reference in radian angle calculations."],"name":"two_pi","type":"float","value":"(2.0 * PI)","modes":0},
+		{"name":"DEFAULT_PHYSICS_MASK","type":"int","value":"1","modes":0},
+		{"name":"DEFAULT_SCROLL_WHEEL_USAGE","type":"bool","value":"true","modes":0},
+		{}
 	],
 	"variables":[
 		{"tooltip":["Used to toggle debugging mode to find bugs."],

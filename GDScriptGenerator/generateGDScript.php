@@ -663,7 +663,7 @@ $GODOT3_TO_GODOT4_RENAMES = array(
 	["get_data(", "get_image("],
 	["get_rect(", "get_region("],
 	["\texport ", "\t@export "],
-	["Camera", "Camera3D"],
+	[":Camera", ":Camera3D"],
 );
 function godot3_to_godot4(string $code_line)
 {
