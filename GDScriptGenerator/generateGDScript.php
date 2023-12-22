@@ -630,6 +630,7 @@ $GODOT3_TO_GODOT4_RENAMES = array(
 	["get_data(", "get_image("],
 	["get_rect(", "get_region("],
 	["\texport ", "\t@export "],
+	["Camera", "Camera3D"],
 );
 function godot3_to_godot4(string $code_line)
 {
@@ -720,13 +721,16 @@ function preprocess_functions(array $json_data, array $defaults = null)
 		$json_data[$methods_key] = array();
 	$code_key = "code";
 	$type_key = "type";
+	$name_key = "name";
 	$parameters_key = "parameters";
 	foreach($json_data[$functions_key] as $key => &$function)
 	{
 		//Handle Parameters
 		if(array_key_exists($parameters_key, $function))
-			foreach($function[$parameters_key] as $parameter)
-				;
+			foreach($function[$parameters_key] as $p_key => &$parameter)
+				if(is_array($parameter))
+					if(!array_key_exists($name_key, $parameter))
+						unset($json_data[$functions_key][$key][$parameters_key][$p_key]);
 		//Implode code data.
 		if(!array_key_exists($code_key, $function))
 			$function[$code_key] = implode_r($defaults["end_line"] . "\t", $defaults["function_code"]);
@@ -793,18 +797,30 @@ function print_function(array $f, array $defaults = null)
 	}
 	print("func " . $f[$name_key] . "(");
 	$temp_count = 0;
+	$type_key = "type";
+	$value_key = "value";
 	$parameters_key = "parameters";
 	if(array_key_exists($parameters_key, $f))
 		$temp_count = count($f[$parameters_key]);
 	if($temp_count > 0)
 		foreach($f[$parameters_key] as $i => $next)
 		{
-			print_r($next);
+			if(is_array($next))
+			{
+				if(!array_key_exists($name_key, $next))
+					continue;
+				print($next[$name_key]);
+				if(array_key_exists($type_key, $next))
+					print(":" . strval($next[$type_key]));
+				if(array_key_exists($value_key, $next))
+					print(" = " . migrate_code(strval($next[$value_key])));
+			}
+			else
+				print($next);
 			if(($i + 1) < $temp_count)
 				print(", ");
 		}
 	print(")");
-	$type_key = "type";
 	if(array_key_exists($type_key, $f))
 		print(" -> " . $f[$type_key]);
 	print(":\n");
@@ -829,13 +845,15 @@ function print_script( array $json_data, int $script_mode = 0 )
 	}
 	//Print Script definers
 	$extends_key = "extends";
-	if(array_key_exists($extends_key, $json_data))
-		if(strlen($json_data[$extends_key]) > 0)
-			print("extends " . $json_data[$extends_key] . "\n");
 	$class_name_key = "class_name";
 	if(array_key_exists($class_name_key, $json_data))
 		if(strlen($json_data[$class_name_key]) > 0)
-			print("class_name " . $json_data[$class_name_key] . "\n");
+			print("class_name " . $json_data[$class_name_key]);
+	if(array_key_exists($extends_key, $json_data) && array_key_exists($class_name_key, $json_data))
+		print(" ");
+	if(array_key_exists($extends_key, $json_data))
+		if(strlen($json_data[$extends_key]) > 0)
+			print("extends " . migrate_code($json_data[$extends_key]) . "\n");
 	if(array_key_exists($extends_key, $json_data) || array_key_exists($class_name_key, $json_data))
 		print("\n");
 	//Print Constants

@@ -2,8 +2,8 @@
 	"defaults":[
 		{"export_variable":true}
 	],
-	"extends":"Node3D",
-	"class_name":"SiCamera",
+	"class_name":"SIGimbalCamera3D",
+	"extends":"Camera",
 	"header_comments":[
 		"Gimbal node based 3D camera control script.",
 		"Written by: ScorpionInc",
@@ -76,7 +76,7 @@
 		{}
 	],
 	"functions":[
-		{"name":"add_f","type":"float","parameters":["floatA","floatB",{}],"code":["#This is a test function.","return floatA + floatB;"]},
+		{"name":"add_f","type":"float","parameters":["floatA",{"name":"floatB","type":"float","value":"1.0f"},{}],"code":["#This is a test function.","return floatA + floatB;"]},
 		{"name":"_ready"}
 	]
 }
