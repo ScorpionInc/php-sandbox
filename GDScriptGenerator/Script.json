@@ -27,6 +27,8 @@
 		{},
 		{"export":false,"name":"rotation_base_name","type":"String","value":"\"CameraBase\"","modes":0,"generate_default":true,"tooltip":["Name of the base gimbal node."]},
 		{"export":false,"name":"rotation_arm_name","type":"String","value":"\"CameraArm\"","modes":0,"generate_default":true,"tooltip":["Name of the arm gimbal node."]},
+		{"export":false,"name":"rotation_base","type":"Spatial","value":"null"},
+		{"export":false,"name":"rotation_arm","type":"Spatial","value":"null"},
 		{},
 		{"export":false,"name":"distance_direction","type":"float","value":"0.0","modes":0,"generate_default":false},
 		{"export":true,"name":"distance","type":"float","value":"1.0","modes":0,"generate_default":true},
@@ -73,7 +75,9 @@
 		{"export":true,"name":"roll_max","type":"float","value":"0.0","modes":0,"generate_default":false,"setget":"roll_max_set"},
 		{"export":true,"name":"roll_min_degrees","type":"float","value":"0.0","modes":0,"generate_default":false,"setget":"roll_min_degrees_set"},
 		{"export":true,"name":"roll_max_degrees","type":"float","value":"0.0","modes":0,"generate_default":false,"setget":"roll_max_degrees_set"},
-		{}
+		{},
+		{"export":true,"export_upper":"LAYERS_3D_PHYSICS","name":"physics_mask","type":"int","value":"DEFAULT_PHYSICS_MASK"},
+		{"export":true,"name":"collide_camera","type":"bool","value":"false"}
 	],
 	"functions":[
 		{"name":"add_f","type":"float","parameters":["floatA",{"name":"floatB","type":"float","value":"1.0f"},{}],"code":["#This is a test function.","return floatA + floatB;"]},

@@ -367,16 +367,49 @@ function print_variable(array $v, array $defaults = null, bool $is_constant = fa
 	if(array_key_exists($comments_key, $v))
 		print_comments($v["comments"]);
 	$type_key = "type";
+	$export_lower_key = "export_lower";
+	$export_upper_key = "export_upper";
 	if($is_constant)
 		print("const " . strtoupper($v[$name_key]));
 	else
 	{
 		if($v[$export_key])
 		{
-			if($defaults["godot_version"] > 3)
+			if($defaults["godot_version"] > 3.5)
 				print("@");
 			print("export");
-			if(array_key_exists($type_key, $v) && $defaults["godot_version"] <= 3)
+			if($defaults["godot_version"] > 3.5)
+			{
+				if(array_key_exists($export_upper_key, $v))
+				{
+					if($v[$export_upper_key] === "LAYERS_2D_RENDER")
+					{
+						print("_flags_2d_render");
+					}
+					elseif($v[$export_upper_key] === "LAYERS_3D_RENDER")
+					{
+						print("_flags_3d_render");
+					}
+					elseif($v[$export_upper_key] === "LAYERS_2D_PHYSICS")
+					{
+						print("_flags_2d_physics");
+					}
+					elseif($v[$export_upper_key] === "LAYERS_3D_PHYSICS")
+					{
+						print("_flags_3d_physics");
+					}
+					else
+					{
+						print("_range(");
+						if(array_key_exists($export_lower_key, $v))
+							print(migrate_code(strval($v[$export_lower_key])) . ", ");
+						else
+							print("0, ");
+						print(migrate_code(strval($v[$export_upper_key])) . ")");
+					}//endif is bitset flags
+				}//endif has an export_upper
+			}//endif is version > 3.5
+			elseif(array_key_exists($type_key, $v))
 				print("(" . migrate_code($v[$type_key]) . ")");
 			print(" ");
 		}
